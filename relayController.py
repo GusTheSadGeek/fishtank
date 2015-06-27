@@ -1,7 +1,37 @@
 #!/usr/bin/python
-import RPi.GPIO as GPIO
+
+import mydebug
+
+if mydebug.TEST == 0:
+    import RPi.GPIO as GPIO
+    GOUT = GPIO.OUT
+    GLOW = GPIO.LOW
+    GHIGH = GPIO.HIGH
+    GBOARD = GPIO.BOARD
+else:
+    GOUT = 0
+    GLOW = 0
+    GHIGH = 0
+    GBOARD = 0
 
 import timer
+
+def setmode(n):
+    if mydebug.TEST == 0:
+        GPIO.setmode(n)
+
+def cleanup():
+    if mydebug.TEST == 0:
+        GPIO.cleanup()
+
+def setup(a, b):
+    if mydebug.TEST == 0:
+        GPIO.setup(a, b)
+
+def output(a, b):
+    if mydebug.TEST == 0:
+        GPIO.output(a, b)
+
 
 class Controller():
     def __init__(self):
@@ -72,7 +102,7 @@ class Relays():
     def __init__(self):
 #        self.pinList = [18, 22, 24, 26]
         self.pinList = [11, 13, 15, 16]
-        GPIO.setmode(GPIO.BOARD)
+        setmode(GBOARD)
 
         self.relays = []
 
@@ -85,7 +115,7 @@ class Relays():
         return self.relays[n]
 
     def cleanup(self):
-        GPIO.cleanup()
+        cleanup()
 
 
 class Relay:
@@ -94,18 +124,18 @@ class Relay:
         self.pin = pin
         self.current_state = 0
         self.timer_state = 0
-        GPIO.setup(self.pin, GPIO.OUT)
+        setup(self.pin, GOUT)
         self.turn_relay_off()
         self.override = 0
 
     def turn_relay_on(self):
         print self.id, "ON"
-        GPIO.output(self.pin, GPIO.LOW)
+        output(self.pin, GLOW)
         self.current_state = 1
 
     def turn_relay_off(self):
         print self.id, "OFF"
-        GPIO.output(self.pin, GPIO.HIGH)
+        output(self.pin, GHIGH)
         self.current_state = 0
 
     def set_state(self, new_state):

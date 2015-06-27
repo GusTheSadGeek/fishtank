@@ -1,17 +1,16 @@
 #!/usr/bin/python
 
+import mydebug
 import os
 import time
 import datetime
 import threading
 
-testing = 0
-
 
 class Temp():
 
     def __init__(self):
-        if not testing:
+        if mydebug.TEST == 0:
             os.system('modprobe w1-gpio')
             os.system('modprobe w1-therm')
 
@@ -29,9 +28,15 @@ class Temp():
 
 
     def get_temp_raw(self, sensor):
-        f = open(sensor, 'r')
-        self.lines = f.readlines()
-        f.close()
+        if mydebug.TEST == 0:
+            f = open(sensor, 'r')
+            self.lines = f.readlines()
+            f.close()
+        else:
+            lines = []
+            lines.append("76 01 55 00 7f ff 0c 10 ee : crc=ee YES")
+            lines.append("76 01 55 00 7f ff 0c 10 ee t=23375")
+            self.lines = lines
         return self.lines
 
     def get_tank_temp(self):
@@ -48,7 +53,7 @@ class Temp():
 
 
     def read_temp(self, sensor):
-        if testing:
+        if mydebug.TEST != 0:
             return 20.1
         else:
             lines = self.get_temp_raw(sensor)
@@ -81,17 +86,38 @@ class Temp():
                 f.close()
         return log
 
-    def get_log2(self):
+    def get_log2(self, days):
         f = None
         try:
-            f = open('/var/log/temp2.txt', 'r')
-            log = f.read()
+            if mydebug.TEST == 0:
+                f = open('/var/log/temp2.txt', 'r')
+            else:
+                f = open('/home/gus/mounts/rpi/var/log/temp2.txt', 'r')
+            log = f.readlines()
         except:
             log = "error"
         finally:
             if f is not None:
                 f.close()
-        return log
+
+        l = len(log)-1
+        d = 0
+        lastDay = -99
+        for n in range(l, -1, -1):
+            try:
+                q = log[n]
+                day = q.split(',')[2]
+                if day != lastDay:
+                    d += 1
+                    lastDay = day
+            except:
+                q=''
+            if d >= days:
+                break
+
+        retLines = log[n:]
+
+        return ''.join(retLines)
 
 
     def task(self):
