@@ -1,6 +1,12 @@
 #!/usr/bin/python
 
 import mydebug
+import threading
+import time
+import os
+
+comms_file = "/mnt/ram/relay_control.txt"
+status_file = "/mnt/ram/relay_status.txt"
 
 if mydebug.TEST == 0:
     import RPi.GPIO as GPIO
@@ -73,18 +79,39 @@ class Controller():
         self.t2 = timer.Timer(self.schedule2, self.relay1)
         self.t2.start()
 
-    def get_relay_state(self, n):
+        thread = threading.Thread(target=self.task)
+        thread.start()
+
+    def task(self):
+         while not self._stop:
+            for _ in range(5):
+                if not self._stop:
+                    time.sleep(1)
+
+            if not self._stop:
+                if os.path.exists(comms_file):
+
+                with open(comms_file, 'r') as f:
+                    data = r.read().split('\n')
+                os.remove(comms_file)
+                fields = data[0].split(' ')
+                relay = int(fields[1])
+                self._toggle(relay)
+
+            if not self._stop:
+                r, t, o = self._get_relay_state(0)
+                status0 = "relay0 {r} {t} {o}\n".format(r=r, t=t, o=o)
+                r, t, o = self._get_relay_state(1)
+                status1 = "relay1 {r} {t} {o}\n".format(r=r, t=t, o=o)
+
+                with open(status_file, 'w') as f:
+                    f.write(status0)
+                    f.write(status1)
+
+    def _get_relay_state(self, n):
         return self.relays.get_relay(n).state()
 
-    def get_relay_state_str(self, n):
-        a, t, o = self.relays.get_relay(n).state()
-
-        actual = self.states[a]
-        timer = self.states[t]
-        override = self.states[o]
-        return "Actual:"+actual+"   Timer:"+timer+"   Override:"+override
-
-    def toggle(self, n):
+    def _toggle(self, n):
         r = self.relays.get_relay(n)
         actual_state, tstate, ostate = r.state()
         if actual_state == 1:
@@ -92,11 +119,33 @@ class Controller():
         else:
             r.turn_relay_on()
 
-
     def stop(self):
+        self._stop = True
         self.t1.stop()
         self.t2.stop()
         self.relays.cleanup()
+
+
+def toggle_relay(n):
+    while os.path.exists(comms_file):
+        time.sleep(1)
+
+    with open(comms_file, 'w') as f:
+        f.write("togglerelay {n} \n".format(n=n))
+
+
+def get_relay_state_str(n):
+    with open(status_file, 'r') as f:
+        lines = f.read().split('\n')
+
+    fields = lines[n].split(' ')
+    # a, t, o = self.relays.get_relay(n).state()
+
+    actual = self.states[fields[1]]
+    timer = self.states[fields[2]]
+    override = self.states[fields[3]]
+    return "Actual:"+actual+"   Timer:"+timer+"   Override:"+override
+
 
 class Relays():
     def __init__(self):
@@ -157,6 +206,15 @@ class Relay:
 
     def state(self):
         return self.current_state, self.timer_state, self.override
+
+
+def main():
+    controller = Controller()
+    controller.init_timers()
+
+
+if __name__ == "__main__":
+    main()
 
 
 # # init list with pin numbers

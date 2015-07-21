@@ -10,7 +10,7 @@ import logging
 
 
 temp_file = '/var/log/tank/temps.txt'
-current_temp_file = '/tmp/current_temps.txt'
+current_temp_file = '/mnt/ram/current_temps.txt'
 
 test_temp_file = 'test/temps2.txt'
 
@@ -36,7 +36,7 @@ class TempSensor(object):
         return self._current_temp
 
     def _get_temp_raw(self):
-        if mydebug.TEST == 0:
+        if mydebug.TEMP_TEST == 0:
             try:
                 with open(self._sensor_file, 'r') as f:
                     lines = f.readlines()
@@ -52,7 +52,7 @@ class TempSensor(object):
         return lines
 
     def read_temp(self):
-        if mydebug.TEST != 0:
+        if mydebug.TEMP_TEST != 0:
             return 20.1
         else:
             lines = self._get_temp_raw()
@@ -70,7 +70,7 @@ class TempSensor(object):
 class TempRecorder(object):
 
     def __init__(self):
-        if mydebug.TEST == 0:
+        if mydebug.TEMP_TEST == 0:
             os.system('modprobe w1-gpio')
             os.system('modprobe w1-therm')
 
@@ -119,7 +119,7 @@ class TempRecorder(object):
 
     def task(self):
         logging.info("temp recorder task starting")
-        last_min = 100
+        last_min = 1
         self._stopped = False
         while not self._stop:
             now = datetime.datetime.now()
@@ -187,7 +187,7 @@ class GetTempLog(object):
         return os.path.getmtime(temp_file)
 
     def get_log(self, days):
-        if mydebug.TEST == 0:
+        if mydebug.TEMP_TEST == 0:
             file_name = temp_file
         else:
             file_name = test_temp_file
