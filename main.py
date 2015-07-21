@@ -3,7 +3,7 @@
 import temp as temperature
 import datetime
 import relayController
-
+import mydebug
 from flask import Flask, send_file, Response
 app = Flask(__name__)
 
@@ -197,10 +197,9 @@ def log():
 controller = relayController.Controller()
 controller.init_timers()
 
-# tmp = temperature.Temp()
-# tmp.start()
-
 if __name__ == "__main__":
-    app.run(host='0.0.0.0')
-#    tmp.stop()
+    if mydebug.TEST == 0:
+        app.run(host='0.0.0.0', port=5000)
+    else:
+        app.run(host='0.0.0.0', port=5001)
     controller.stop()

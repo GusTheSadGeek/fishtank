@@ -393,11 +393,20 @@ def main():
     logging.info("Started recording temps")
     tr = TempRecorder()
     tr.start()
-    while True:
-        time.sleep(60)
-        if tr.stopped:
-            logging.error("Restarting temp recorder task")
-            tr.start()
+    running = True
+    while running:
+        try:
+            for _ in range(60):
+                if running:
+                    time.sleep(1)
+            if running and tr.stopped:
+                logging.error("Restarting temp recorder task")
+                tr.start()
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt")
+            running = False
+            tr.stop()
+
     logging.info("Stopped recording temps")
 
 
