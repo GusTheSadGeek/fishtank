@@ -3,9 +3,15 @@
 TEST = 0
 
 # Debugging
-TEST = 1
+TEST = 0
 
 
 
 # Dont debug TEMP module
 TEMP_TEST = 0
+
+# Debug the relay module
+RELAY_TEST = 0
+
+
+

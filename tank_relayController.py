@@ -4,11 +4,13 @@ import mydebug
 import threading
 import time
 import os
+import logging
+
 
 comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
 
-if mydebug.TEST == 0:
+if mydebug.RELAY_TEST == 0:
     import RPi.GPIO as GPIO
     GOUT = GPIO.OUT
     GLOW = GPIO.LOW
@@ -22,28 +24,37 @@ else:
 
 import timer
 
+
+states = ['OFF', 'ON']
+
+
 def setmode(n):
-    if mydebug.TEST == 0:
+    if mydebug.RELAY_TEST == 0:
         GPIO.setmode(n)
 
+
 def cleanup():
-    if mydebug.TEST == 0:
+    if mydebug.RELAY_TEST == 0:
         GPIO.cleanup()
 
+
 def setup(a, b):
-    if mydebug.TEST == 0:
+    if mydebug.RELAY_TEST == 0:
         GPIO.setup(a, b)
 
+
 def output(a, b):
-    if mydebug.TEST == 0:
+    if mydebug.RELAY_TEST == 0:
         GPIO.output(a, b)
 
 
-class Controller():
+class Controller(object):
     def __init__(self):
         self.relays = Relays()
         self.relay0 = self.relays.get_relay(0)
         self.relay1 = self.relays.get_relay(1)
+        self.relay2 = self.relays.get_relay(2)
+        self.relay3 = self.relays.get_relay(3)
 
         s1 = timer.Schedule()
         s1.set(timer.SchdEntry("wkd 00:00 off"))
@@ -69,8 +80,7 @@ class Controller():
         self.t1 = None
         self.t2 = None
 
-        self.states = ['OFF', 'ON']
-
+        self._stop = False
 
     def init_timers(self):
         self.t1 = timer.Timer(self.schedule1, self.relay0)
@@ -82,31 +92,34 @@ class Controller():
         thread = threading.Thread(target=self.task)
         thread.start()
 
+    def running(self):
+        return (not self._stop) or self.t1.running() or self.t2.running()
+
     def task(self):
-         while not self._stop:
+        while not self._stop:
             for _ in range(5):
                 if not self._stop:
                     time.sleep(1)
 
             if not self._stop:
                 if os.path.exists(comms_file):
-
-                with open(comms_file, 'r') as f:
-                    data = r.read().split('\n')
-                os.remove(comms_file)
-                fields = data[0].split(' ')
-                relay = int(fields[1])
-                self._toggle(relay)
+                    with open(comms_file, 'r') as f:
+                        data = f.read().split('\n')
+                    os.remove(comms_file)
+                    fields = data[0].split(' ')
+                    relay = int(fields[1])
+                    self._toggle(relay)
 
             if not self._stop:
-                r, t, o = self._get_relay_state(0)
-                status0 = "relay0 {r} {t} {o}\n".format(r=r, t=t, o=o)
-                r, t, o = self._get_relay_state(1)
-                status1 = "relay1 {r} {t} {o}\n".format(r=r, t=t, o=o)
-
                 with open(status_file, 'w') as f:
-                    f.write(status0)
-                    f.write(status1)
+                    for n in range(4):
+                        r, t, o = self._get_relay_state(n)
+                        f.write("relay{n} {r} {t} {o}\n".format(n=n, r=states[r], t=states[t], o=states[o]))
+                # r, t, o = self._get_relay_state(1)
+                # status1 = "relay1 {r} {t} {o}\n".format(r=states[r], t=states[t], o=states[o])
+
+        logging.warn("Relay controller stopped")
+        self._stop = True
 
     def _get_relay_state(self, n):
         return self.relays.get_relay(n).state()
@@ -135,21 +148,20 @@ def toggle_relay(n):
 
 
 def get_relay_state_str(n):
+
     with open(status_file, 'r') as f:
         lines = f.read().split('\n')
 
     fields = lines[n].split(' ')
-    # a, t, o = self.relays.get_relay(n).state()
 
-    actual = self.states[fields[1]]
-    timer = self.states[fields[2]]
-    override = self.states[fields[3]]
-    return "Actual:"+actual+"   Timer:"+timer+"   Override:"+override
+    actual = fields[1]
+    timerr = fields[2]
+    override = fields[3]
+    return "Actual:"+actual+"   Timer:"+timerr+"   Override:"+override
 
 
-class Relays():
+class Relays(object):
     def __init__(self):
-#        self.pinList = [18, 22, 24, 26]
         self.pinList = [11, 13, 15, 16]
         setmode(GBOARD)
 
@@ -163,11 +175,12 @@ class Relays():
     def get_relay(self, n):
         return self.relays[n]
 
-    def cleanup(self):
+    @classmethod
+    def cleanup(cls):
         cleanup()
 
 
-class Relay:
+class Relay(object):
     def __init__(self, new_id, pin):
         self.id = new_id
         self.pin = pin
@@ -175,20 +188,20 @@ class Relay:
         self.timer_state = 0
         setup(self.pin, GOUT)
         self.turn_relay_off()
-        self.override = 0
+        self.override = 1
 
     def turn_relay_on(self):
-        print self.id, "ON"
+        logging.info(str(self.id)+" ON")
         output(self.pin, GLOW)
         self.current_state = 1
 
     def turn_relay_off(self):
-        print self.id, "OFF"
+        logging.info(str(self.id)+" OFF")
         output(self.pin, GHIGH)
         self.current_state = 0
 
     def set_state(self, new_state):
-        print "{id} {state}".format(id=self.id, state=new_state)
+        # print "{id} {state}".format(id=self.id, state=new_state)
         if "on" in new_state:
             self.timer_state = 1
             if not self.override:
@@ -208,9 +221,31 @@ class Relay:
         return self.current_state, self.timer_state, self.override
 
 
+def setup_log():
+    default_log_dir = r'/var/log/tank/'
+    default_logfile = default_log_dir+r'/relay.log'
+
+    if not os.path.exists(default_log_dir):
+        os.makedirs(default_log_dir)
+
+    logging.basicConfig(filename=default_logfile, level=logging.DEBUG,
+                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+
+
 def main():
+    setup_log()
+    logging.info("STARTED")
     controller = Controller()
     controller.init_timers()
+    try:
+        while controller.running():
+            time.sleep(60)
+    except KeyboardInterrupt:
+        print "\nQUITTING\n"
+        logging.warn("Ctrl-C")
+        while controller.running():
+            controller.stop()
+            time.sleep(0.1)
 
 
 if __name__ == "__main__":

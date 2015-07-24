@@ -396,14 +396,15 @@ def main():
     running = True
     while running:
         try:
-            for _ in range(60):
-                if running:
-                    time.sleep(1)
+            time.sleep(60)
+            # for _ in range(60):
+            #     if running:
+            #         time.sleep(1)
             if running and tr.stopped:
                 logging.error("Restarting temp recorder task")
                 tr.start()
         except KeyboardInterrupt:
-            print("KeyboardInterrupt")
+            print("\nCtrl-C  KeyboardInterrupt\n")
             running = False
             tr.stop()
 

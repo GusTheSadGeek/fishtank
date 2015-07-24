@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-import temp as temperature
+import tank_temp as temperature
 import datetime
-import relayController
+import tank_relayController
 import mydebug
 from flask import Flask, send_file, Response
 app = Flask(__name__)
@@ -86,6 +86,7 @@ def graph(days=30):
     return a+b+c
 
 
+
 def main_page(ctrl=False):
     line = '<a href="/all"> All </a><br>'
     line += '<a href="/month"> Month </a><br>'
@@ -93,14 +94,14 @@ def main_page(ctrl=False):
     line += '<br><div id="linechart_material"></div>'
     line += gettimestamp() + "<br><br>"
     line += temperature.get_current_temps_formatted()+"<br><br>"
-    line += "Light 1 "+controller.get_relay_state_str(0)+"<br>"
-    line += "Light 2 "+controller.get_relay_state_str(1)+"<br><br>"
+    line += "Light 1 "+tank_relayController.get_relay_state_str(0)+"<br>"
+    line += "Light 2 "+tank_relayController.get_relay_state_str(1)+"<br><br>"
     if ctrl:
         line += '<a href="/TR1">Toggle Light 1</a></br>'
         line += '<a href="/TR2">Toggle Light 2</a></br><br>'
     line += '</br>'
-    line += "Relay 3 "+controller.get_relay_state_str(2)+"<br>"
-    line += "Relay 4 "+controller.get_relay_state_str(3)+"<br><br>"
+    line += "Relay 3 "+tank_relayController.get_relay_state_str(2)+"<br>"
+    line += "Relay 4 "+tank_relayController.get_relay_state_str(3)+"<br><br>"
     if ctrl:
         line += '<a href="/TR3">Toggle Relay 3</a></br>'
         line += '<a href="/TR4">Toggle Relay 4</a></br><br>'
@@ -148,37 +149,37 @@ def control():
 
 @app.route("/TOR1")
 def toggle_override_light_1():
-    controller.relays.get_relay(0).toggle_override()
+#    controller.relays.get_relay(0).toggle_override()
     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
 @app.route("/TOR2")
 def toggle_override_light_2():
-    controller.relays.get_relay(1).toggle_override()
+#    controller.relays.get_relay(1).toggle_override()
     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
 @app.route("/TR1")
 def toggle_light_1():
-    controller.toggle(0)
+    tank_relayController.toggle_relay(0)
     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
 @app.route("/TR2")
 def toggle_light_2():
-    controller.toggle(1)
+    tank_relayController.toggle_relay(1)
     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
 @app.route("/TR3")
 def toggle_light_3():
-    controller.toggle(2)
+    tank_relayController.toggle_relay(2)
     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
 @app.route("/TR4")
 def toggle_light_4():
-    controller.toggle(3)
+    tank_relayController.toggle_relay(3)
     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
@@ -194,12 +195,12 @@ def log():
     return Response('<br>'.join(text), mimetype="text/html")
 
 
-controller = relayController.Controller()
-controller.init_timers()
+# controller = relayController.Controller()
+# controller.init_timers()
 
 if __name__ == "__main__":
     if mydebug.TEST == 0:
         app.run(host='0.0.0.0', port=5000)
     else:
         app.run(host='0.0.0.0', port=5001)
-    controller.stop()
+    # controller.stop()

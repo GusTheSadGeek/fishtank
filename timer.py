@@ -2,8 +2,8 @@
 import datetime
 import threading
 import time
-import relayController
-
+# import relayController
+import logging
 # class Relay:
 #     def __init__(self, new_id):
 #         self.id = new_id
@@ -75,7 +75,7 @@ class Timer:
         state = self.schedule.current_state(day_of_week, seconds_since_midnight)
 
         if state != self.current_state:
-            print 'Setting Relay to {s}'.format(s=state)
+            logging.info('Setting Relay {r} to {s}'.format(r=self.relay.id, s=state))
             self.current_state = state
         self.relay.set_state(state)
 
@@ -94,11 +94,13 @@ class Timer:
                 time.sleep(1)
                 q += 1
 
-        print "stopping_1"
+        logging.warn("timer stopping {r}".format(r=self.relay.id))
+        self._stop = True
 
+    def running(self):
+        return not self._stop
 
-
-#while True:
+# while True:
 #    time.sleep(100)
 
 # t.tick(datetime.datetime(year=1, month=1, day=6, hour=0, minute=1))
