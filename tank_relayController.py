@@ -56,38 +56,26 @@ class Controller(object):
         self.relay2 = self.relays.get_relay(2)
         self.relay3 = self.relays.get_relay(3)
 
-        s1 = timer.Schedule()
-        s1.set(timer.SchdEntry("wkd 00:00 off"))
-        s1.set(timer.SchdEntry("wkd 14:30 on"))
-        s1.set(timer.SchdEntry("wkd 22:30 off"))
+        # self.schedule1 = timer.Schedule2("timer0.sched")
+        # self.schedule2 = timer.Schedule2("timer1.sched")
 
-        s1.set(timer.SchdEntry("wke 00:00 off"))
-        s1.set(timer.SchdEntry("wke 12:30 on"))
-        s1.set(timer.SchdEntry("wke 22:30 off"))
-
-        s2 = timer.Schedule()
-        s2.set(timer.SchdEntry("wkd 00:00 off"))
-        s2.set(timer.SchdEntry("wkd 15:00 on"))
-        s2.set(timer.SchdEntry("wkd 23:00 off"))
-
-        s2.set(timer.SchdEntry("wke 00:00 off"))
-        s2.set(timer.SchdEntry("wke 13:00 on"))
-        s2.set(timer.SchdEntry("wke 23:00 off"))
-
-        self.schedule1 = s1
-        self.schedule2 = s2
-
-        self.t1 = None
-        self.t2 = None
+        self.timers = []
 
         self._stop = False
 
     def init_timers(self):
-        self.t1 = timer.Timer(self.schedule1, self.relay0)
-        self.t1.start()
+        self.timers.append(timer.Timer2(timer.Schedule2("timer0.sched"), self.relay0))
+        self.timers.append(timer.Timer2(timer.Schedule2("timer1.sched"), self.relay1))
+        self.timers.append(timer.Timer2(timer.Schedule2("timer2.sched"), self.relay2))
+        self.timers.append(timer.Timer2(timer.Schedule2("timer3.sched"), self.relay3))
 
-        self.t2 = timer.Timer(self.schedule2, self.relay1)
-        self.t2.start()
+        for t in self.timers:
+            t.start()
+
+        # self.t1.start()
+        #
+        # self.t2 = timer.Timer2(self.schedule2, self.relay1)
+        # self.t2.start()
 
         thread = threading.Thread(target=self.task)
         thread.start()
@@ -107,8 +95,12 @@ class Controller(object):
                         data = f.read().split('\n')
                     os.remove(comms_file)
                     fields = data[0].split(' ')
-                    relay = int(fields[1])
-                    self._toggle(relay)
+                    if 'togglerelay' in fields[0]:
+                        relay = int(fields[1])
+                        self._toggle(relay)
+                    if 'setsched' in fields[0]:
+                        relay = int(fields[1])
+                        self._set_sched(relay, fields[2],fields[3],fields[4],fields[5],fields[6],fields[7],fields[8])
 
             if not self._stop:
                 with open(status_file, 'w') as f:
@@ -132,10 +124,13 @@ class Controller(object):
         else:
             r.turn_relay_on()
 
+    def _set_sched(self, relay, a,b,c,d,e,f,g):
+        self.timers[relay].new_schedule(a,b,c,d,e,f,g)
+
     def stop(self):
         self._stop = True
-        self.t1.stop()
-        self.t2.stop()
+        for t in self.timers:
+            t.stop()
         self.relays.cleanup()
 
 
@@ -145,6 +140,22 @@ def toggle_relay(n):
 
     with open(comms_file, 'w') as f:
         f.write("togglerelay {n} \n".format(n=n))
+
+
+def set_schedule(n, mon, tue, wed, thu, fri, sat, sun):
+    with open(comms_file, 'w') as f:
+        f.write("setsched {n} {m} {t} {w} {th} {f} {sa} {su} \n".format(n=n,m=mon,t=tue,w=wed,th=thu,f=fri,sa=sat,su=sun))
+
+
+def get_relay_query(n):
+    if n == 0:
+        return timer.get_query("timer0.sched")
+    if n == 1:
+        return timer.get_query("timer1.sched")
+    if n == 2:
+        return timer.get_query("timer2.sched")
+    if n == 3:
+        return timer.get_query("timer3.sched")
 
 
 def get_relay_state_str(n):
@@ -188,7 +199,7 @@ class Relay(object):
         self.timer_state = 0
         setup(self.pin, GOUT)
         self.turn_relay_off()
-        self.override = 1
+        self.override = 0
 
     def turn_relay_on(self):
         logging.info(str(self.id)+" ON")
@@ -202,7 +213,7 @@ class Relay(object):
 
     def set_state(self, new_state):
         # print "{id} {state}".format(id=self.id, state=new_state)
-        if "on" in new_state:
+        if new_state:
             self.timer_state = 1
             if not self.override:
                 self.turn_relay_on()
@@ -210,12 +221,13 @@ class Relay(object):
             self.timer_state = 0
             if not self.override:
                 self.turn_relay_off()
+        self.override = (self.current_state != new_state)
 
-    def toggle_override(self):
-        if self.override == 0:
-            self.override = 1
-        else:
-            self.override = 0
+    # def toggle_override(self):
+    #     if self.override == 0:
+    #         self.override = 1
+    #     else:
+    #         self.override = 0
 
     def state(self):
         return self.current_state, self.timer_state, self.override

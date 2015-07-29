@@ -1,0 +1,89 @@
+
+
+#timepicker #tp1 {
+    font: normal 12px/1.25 "Trebuchet MS", Arial, sans-serif;
+    padding: 0;
+    margin: 0;
+}
+
+#timepicker #tp1 .hourinfo {
+    margin: 0;
+}
+
+#timepicker #tp2 {
+    -webkit-column-count: 1; /* Chrome, Safari, Opera */
+    -moz-column-count: 1; /* Firefox */
+    column-count: 1;
+    font: normal 12px/1.25 "Trebuchet MS", Arial, sans-serif;
+    float: left;
+    min-width: 600px;
+}
+
+
+
+#timepicker #tp0 {
+    -webkit-column-count: 99 px 8; /* Chrome, Safari, Opera */
+    -moz-column-count: 99px 8; /* Firefox */
+    column-count: 99px 8;
+    font: normal 12px/1.25 "Trebuchet MS", Arial, sans-serif;
+    min-width: 725px;
+}
+#timepicker #selectable {
+    list-style-type: none;
+    padding: 0;
+}
+#timepicker .legend_day {float :left; width: 30px; height: 800px;padding: 0; margin: 0;}
+#timepicker .day {float :left; width: 99px; height: 800px;padding: 0; margin: 0; }
+
+
+#timepicker .legend_hour {  text-align: right;
+                            width: 26px; height: 14px;
+                            font-size: 12px;
+                            cursor: -moz-grabbing;
+                            border-bottom: 1px solid #ffffff;
+                            background: #FFFFFF;
+}
+
+#timepicker .hour { text-align: center;
+                    width: 97px; height: 14px;
+                    font-size: 12px;
+                    cursor: -moz-grabbing;
+                    border-bottom: 1px solid #ffffff;
+}
+
+
+#timepicker .total { width: 97px; height: 14px;
+                     font-size: 5px;
+                     cursor: -moz-grabbing;
+}
+
+#timepicker .ui-selectee { margin: 0; background: #F0F0F0; }
+#timepicker .ui-selecting { background: #FECA40; }
+#timepicker .ui-unselecting { background: #FF0000; }
+#timepicker .ui-selected { background-color: #73B531;}
+
+
+#timepicker .hourinfo {text-align: center;
+                    width: 97px; height: 16px;
+                    font-size: 14px;
+                    cursor: -moz-grabbing;
+                    border-bottom: 1px solid #ffffff;
+                    background: #FFFFFF;
+}
+
+
+
+#timepicker .title {text-align: center;
+                    width: 97px; height: 16px;
+                    font-size: 14px;
+                    cursor: -moz-grabbing;
+                    border-bottom: 1px solid #ffffff;
+                    background: #FFFFFF;
+
+
+
+#qqqq {background-color: #939393; font-size: 1px; cursor: -moz-grabbing; line-height: 1px; border-bottom: 1px solid #e1e0de; }
+
+#q1 .total {width: 50px; font-size: 1px; height: 10px;cursor: -moz-grabbing;}
+#qwe { line-height: 1px; border-bottom: 1px solid #e1e0de;}
+#qqq {width: 60px}

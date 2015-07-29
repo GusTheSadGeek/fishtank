@@ -4,11 +4,20 @@ import tank_temp as temperature
 import datetime
 import tank_relayController
 import mydebug
-from flask import Flask, send_file, Response
+from flask import Flask, send_file, Response, request
 app = Flask(__name__)
 
 prog = None
 
+conf = {}
+conf['relay0'] = 'relay0'
+conf['relay1'] = 'relay1'
+conf['relay2'] = 'relay2'
+conf['relay3'] = 'relay3'
+
+def c(n):
+    s = 'relay'+str(n)
+    return conf[s] != 'N'
 
 class LogStuff(object):
     __shared_state = {}
@@ -94,19 +103,45 @@ def main_page(ctrl=False):
     line += '<br><div id="linechart_material"></div>'
     line += gettimestamp() + "<br><br>"
     line += temperature.get_current_temps_formatted()+"<br><br>"
-    line += "Light 1 "+tank_relayController.get_relay_state_str(0)+"<br>"
-    line += "Light 2 "+tank_relayController.get_relay_state_str(1)+"<br><br>"
+    if c(0):
+        line += conf['relay0']+' '+tank_relayController.get_relay_state_str(0)+"<br>"
+    if c(1):
+        line += conf['relay1']+' '+tank_relayController.get_relay_state_str(1)+"<br>"
+    if c(2):
+        line += conf['relay2']+' '+tank_relayController.get_relay_state_str(2)+"<br>"
+    if c(3):
+        line += conf['relay3']+' '+tank_relayController.get_relay_state_str(3)+"<br>"
+    line += '<br><br>'
     if ctrl:
-        line += '<a href="/TR1">Toggle Light 1</a></br>'
-        line += '<a href="/TR2">Toggle Light 2</a></br><br>'
+        if c(0):
+            line += '<a href="/TR1">Toggle '+conf['relay0']+'</a></br>'
+        if c(1):
+            line += '<a href="/TR2">Toggle '+conf['relay1']+'</a></br>'
+        if c(2):
+            line += '<a href="/TR3">Toggle '+conf['relay2']+'</a></br>'
+        if c(3):
+            line += '<a href="/TR4">Toggle '+conf['relay3']+'</a></br>'
+        line += '<br><br>'
+        if c(0):
+            q = tank_relayController.get_relay_query(0)
+            line += '<a href="/otocinclus/setr0'+q+'">Set '+conf['relay0']+' Timings</a></br>'
+        if c(1):
+            q = tank_relayController.get_relay_query(1)
+            line += '<a href="/otocinclus/setr1'+q+'">Set '+conf['relay1']+' Timings</a></br>'
+        if c(2):
+            q = tank_relayController.get_relay_query(2)
+            line += '<a href="/otocinclus/setr2'+q+'">Set '+conf['relay2']+' Timings</a></br>'
+        if c(3):
+            q = tank_relayController.get_relay_query(3)
+            line += '<a href="/otocinclus/setr3'+q+'">Set '+conf['relay3']+' Timings</a></br>'
     line += '</br>'
-    line += "Relay 3 "+tank_relayController.get_relay_state_str(2)+"<br>"
-    line += "Relay 4 "+tank_relayController.get_relay_state_str(3)+"<br><br>"
-    if ctrl:
-        line += '<a href="/TR3">Toggle Relay 3</a></br>'
-        line += '<a href="/TR4">Toggle Relay 4</a></br><br>'
-        line += '<a href="/TOR1">Override Light 1</a></br>'
-        line += '<a href="/TOR2">Override Light 2</a></br><br>'
+#    line += "Relay 3 "+tank_relayController.get_relay_state_str(2)+"<br>"
+#    line += "Relay 4 "+tank_relayController.get_relay_state_str(3)+"<br><br>"
+#    if ctrl:
+#        line += '<a href="/TR3">Toggle Relay 3</a></br>'
+#        line += '<a href="/TR4">Toggle Relay 4</a></br><br>'
+#        line += '<a href="/TOR1">Override Light 1</a></br>'
+#        line += '<a href="/TOR2">Override Light 2</a></br><br>'
     line += '</br>'
     line += '<br><br><a href="/LOG">Temp Log</a></br><br>'
     line += '</body>\n'
@@ -147,16 +182,61 @@ def control():
     return line
 
 
-@app.route("/TOR1")
-def toggle_override_light_1():
-#    controller.relays.get_relay(0).toggle_override()
-    return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
+def setrelay(n):
+    mon = request.args.get('mon')
+    tue = request.args.get('tue')
+    wed = request.args.get('wed')
+    thu = request.args.get('thu')
+    fri = request.args.get('fri')
+    sat = request.args.get('sat')
+    sun = request.args.get('sun')
+    tank_relayController.set_schedule(n,mon,tue,wed,thu,fri,sat,sun)
+    page = """
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Timepicker</title>
+  <link rel="stylesheet" href="/static/jquery-ui.css">
+  <script src="/static/jquery-1.10.2.js"></script>
+  <script src="/static/jquery-ui.js"></script>
+  <link rel="stylesheet" href="/static/gus1.css">
+</head>
+<body>
+<div id="timepicker"> </div>
+<div><a href="/otocinclus">BACK</a></div>
+<script src="/static/gus1.js"></script>
+</body>
+</html>
+"""
+    return page
 
+@app.route("/otocinclus/setr0")
+def setr0():
+    return setrelay(0)
 
-@app.route("/TOR2")
-def toggle_override_light_2():
-#    controller.relays.get_relay(1).toggle_override()
-    return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
+@app.route("/otocinclus/setr1")
+def setr1():
+    return setrelay(1)
+
+@app.route("/otocinclus/setr2")
+def setr2():
+    return setrelay(2)
+
+@app.route("/otocinclus/setr3")
+def setr3():
+    return setrelay(3)
+
+# @app.route("/TOR1")
+# def toggle_override_light_1():
+# #    controller.relays.get_relay(0).toggle_override()
+#     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
+#
+#
+# @app.route("/TOR2")
+# def toggle_override_light_2():
+# #    controller.relays.get_relay(1).toggle_override()
+#     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
 @app.route("/TR1")
@@ -199,6 +279,15 @@ def log():
 # controller.init_timers()
 
 if __name__ == "__main__":
+    with open("main.conf") as f:
+        lines = f.read().split('\n')
+    for l in lines:
+        l = l.strip()
+        if len(l) > 0:
+            f = l.split(' ')
+            conf[f[0]] = ' '.join(f[1:])
+
+
     if mydebug.TEST == 0:
         app.run(host='0.0.0.0', port=5000)
     else:
