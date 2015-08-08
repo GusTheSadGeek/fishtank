@@ -8,10 +8,10 @@ TEST = 0
 
 
 # Dont debug TEMP module
-TEMP_TEST = 1
+TEMP_TEST = 0
 
 # Debug the relay module
-RELAY_TEST = 1
+RELAY_TEST = 0
 
 
 
