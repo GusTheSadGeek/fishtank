@@ -3,3 +3,4 @@ main.conf
 temp_sensors.conf
 .idea
 *.pyc
+*.sched
