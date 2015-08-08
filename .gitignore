@@ -1,3 +1,5 @@
 relay_pins.conf
 main.conf
 temp_sensors.conf
+.idea
+*.pyc
