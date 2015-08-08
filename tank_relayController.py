@@ -120,9 +120,11 @@ class Controller(object):
 
             if not self._stop:
                 with open(status_file, 'w') as f:
-                    for n in range(4):
-                        r, t, o = self._get_relay_state(n)
+                    n = 0
+                    for relay in self.relays.relays:
+                        r, t, o = relay.state()
                         f.write("relay{n} {r} {t} {o}\n".format(n=n, r=states[r], t=states[t], o=states[o]))
+                        n += 1
                 # r, t, o = self._get_relay_state(1)
                 # status1 = "relay1 {r} {t} {o}\n".format(r=states[r], t=states[t], o=states[o])
 
@@ -193,26 +195,30 @@ class Relays(object):
 
         setmode(GBOARD)
 
-        self.relays = []
+        self._relays = []
 
         r = 0
         for p in self.pinList:
-            self.relays.append(Relay(r, p))
+            self._relays.append(Relay(r, p))
             r += 1
 
     @property
     def count(self):
-        return len(self.relays)
+        return len(self._relays)
+
+    @property
+    def relays(self):
+        return self._relays
 
     @staticmethod
     def load_pins():
         with open(pin_file) as f:
-            pins = f.read().split('\n')
-        return pins
+            pins = f.read().strip().split('\n')
+        return map(int, pins)
 
     def get_relay(self, n):
-        if len(self.relays) < n:
-            return self.relays[n]
+        if len(self._relays) > n:
+            return self._relays[n]
         return None
 
     @classmethod
