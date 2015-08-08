@@ -9,6 +9,7 @@ import logging
 
 comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
+pin_file = "relay_pins.conf"
 
 if mydebug.RELAY_TEST == 0:
     import RPi.GPIO as GPIO
@@ -51,10 +52,11 @@ def output(a, b):
 class Controller(object):
     def __init__(self):
         self.relays = Relays()
-        self.relay0 = self.relays.get_relay(0)
-        self.relay1 = self.relays.get_relay(1)
-        self.relay2 = self.relays.get_relay(2)
-        self.relay3 = self.relays.get_relay(3)
+
+        # self.relay0 = self.relays.get_relay(0)
+        # self.relay1 = self.relays.get_relay(1)
+        # self.relay2 = self.relays.get_relay(2)
+        # self.relay3 = self.relays.get_relay(3)
 
         # self.schedule1 = timer.Schedule2("timer0.sched")
         # self.schedule2 = timer.Schedule2("timer1.sched")
@@ -64,10 +66,14 @@ class Controller(object):
         self._stop = False
 
     def init_timers(self):
-        self.timers.append(timer.Timer2(timer.Schedule2("timer0.sched"), self.relay0))
-        self.timers.append(timer.Timer2(timer.Schedule2("timer1.sched"), self.relay1))
-        self.timers.append(timer.Timer2(timer.Schedule2("timer2.sched"), self.relay2))
-        self.timers.append(timer.Timer2(timer.Schedule2("timer3.sched"), self.relay3))
+        for n in range(self.relays.count):
+            filename = "timer{n}.sched".format(n=n)
+            self.timers.append(timer.Timer2(timer.Schedule2(filename), self.relays.get_relay(n)))
+
+        # self.timers.append(timer.Timer2(timer.Schedule2("timer0.sched"), self.relay0))
+        # self.timers.append(timer.Timer2(timer.Schedule2("timer1.sched"), self.relay1))
+        # self.timers.append(timer.Timer2(timer.Schedule2("timer2.sched"), self.relay2))
+        # self.timers.append(timer.Timer2(timer.Schedule2("timer3.sched"), self.relay3))
 
         for t in self.timers:
             t.start()
@@ -81,7 +87,10 @@ class Controller(object):
         thread.start()
 
     def running(self):
-        return (not self._stop) or self.t1.running() or self.t2.running()
+        for t in self.timers:
+            if t.running():
+                return False
+        return not self._stop
 
     def task(self):
         while not self._stop:
@@ -100,7 +109,14 @@ class Controller(object):
                         self._toggle(relay)
                     if 'setsched' in fields[0]:
                         relay = int(fields[1])
-                        self._set_sched(relay, fields[2],fields[3],fields[4],fields[5],fields[6],fields[7],fields[8])
+                        self._set_sched(relay,
+                                        fields[2],
+                                        fields[3],
+                                        fields[4],
+                                        fields[5],
+                                        fields[6],
+                                        fields[7],
+                                        fields[8])
 
             if not self._stop:
                 with open(status_file, 'w') as f:
@@ -124,8 +140,8 @@ class Controller(object):
         else:
             r.turn_relay_on()
 
-    def _set_sched(self, relay, a,b,c,d,e,f,g):
-        self.timers[relay].new_schedule(a,b,c,d,e,f,g)
+    def _set_sched(self, relay, a, b, c, d, e, f, g):
+        self.timers[relay].new_schedule(a, b, c, d, e, f, g)
 
     def stop(self):
         self._stop = True
@@ -144,47 +160,60 @@ def toggle_relay(n):
 
 def set_schedule(n, mon, tue, wed, thu, fri, sat, sun):
     with open(comms_file, 'w') as f:
-        f.write("setsched {n} {m} {t} {w} {th} {f} {sa} {su} \n".format(n=n,m=mon,t=tue,w=wed,th=thu,f=fri,sa=sat,su=sun))
+        f.write("setsched {n} {m} {t} {w} {th} {f} {sa} {su} \n".
+                format(n=n, m=mon, t=tue, w=wed, th=thu, f=fri, sa=sat, su=sun))
 
 
 def get_relay_query(n):
-    if n == 0:
-        return timer.get_query("timer0.sched")
-    if n == 1:
-        return timer.get_query("timer1.sched")
-    if n == 2:
-        return timer.get_query("timer2.sched")
-    if n == 3:
-        return timer.get_query("timer3.sched")
+    filename = "timer{n}.sched".format(n=n)
+    return timer.get_query(filename)
 
 
 def get_relay_state_str(n):
 
-    with open(status_file, 'r') as f:
-        lines = f.read().split('\n')
+    try:
+        with open(status_file, 'r') as f:
+            lines = f.read().split('\n')
 
-    fields = lines[n].split(' ')
+        fields = lines[n].split(' ')
 
-    actual = fields[1]
-    timerr = fields[2]
-    override = fields[3]
+        actual = fields[1]
+        timerr = fields[2]
+        override = fields[3]
+    except IOError:
+        actual = '?'
+        timerr = '?'
+        override = '?'
     return "Actual:"+actual+"   Timer:"+timerr+"   Override:"+override
 
 
 class Relays(object):
     def __init__(self):
-        self.pinList = [11, 13, 15, 16]
+        self.pinList = self.load_pins()
+
         setmode(GBOARD)
 
         self.relays = []
 
-        self.relays.append(Relay(0, self.pinList[0]))
-        self.relays.append(Relay(1, self.pinList[1]))
-        self.relays.append(Relay(2, self.pinList[2]))
-        self.relays.append(Relay(3, self.pinList[3]))
+        r = 0
+        for p in self.pinList:
+            self.relays.append(Relay(r, p))
+            r += 1
+
+    @property
+    def count(self):
+        return len(self.relays)
+
+    @staticmethod
+    def load_pins():
+        with open(pin_file) as f:
+            pins = f.read().split('\n')
+        return pins
 
     def get_relay(self, n):
-        return self.relays[n]
+        if len(self.relays) < n:
+            return self.relays[n]
+        return None
 
     @classmethod
     def cleanup(cls):

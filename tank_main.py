@@ -15,9 +15,11 @@ conf['relay1'] = 'relay1'
 conf['relay2'] = 'relay2'
 conf['relay3'] = 'relay3'
 
+
 def c(n):
     s = 'relay'+str(n)
     return conf[s] != 'N'
+
 
 class LogStuff(object):
     __shared_state = {}
@@ -34,13 +36,13 @@ class LogStuff(object):
         if (last_changed != self._last_changed) or (days not in self._log):
             self._last_changed = last_changed
 
-            logdata, mn, mx = temperature.get_temp_log(days)
+            logdata, mn, mx, sensor_names = temperature.get_temp_log(days)
             new_log = []
             for e in logdata:
                 fields = e.split(',')
                 if len(fields) > 6:
                     new_log.append("[new Date({a}),{b}]".format(a=','.join(fields[0:5]), b=','.join(fields[5:7])))
-            self._log[days] = ','.join(new_log), mn, mx
+            self._log[days] = ','.join(new_log), mn, mx, sensor_names
             return self._log[days]
         else:
             return self._log[days]
@@ -53,7 +55,11 @@ def gettimestamp():
 
 
 def graph(days=30):
-    a = """
+    b, mn, mx, sensor_names = LogStuff().get_temp_log(days)
+
+    a = []
+
+    a.append("""
     <script type="text/javascript" src="https://www.google.com/jsapi"></script>
     <script type="text/javascript">
     google.load('visualization', '1.1', {packages: ['corechart', 'line']});
@@ -61,19 +67,18 @@ def graph(days=30):
     function drawChart() {
       var data = new google.visualization.DataTable();
       data.addColumn('datetime', 'Hours');
-      data.addColumn('number', 'Room');
-      data.addColumn('number', 'Tank');
-      data.addRows([
-    """
+    """)
 
-    b, mn, mx = LogStuff().get_temp_log(days)
+    for name in reversed(sensor_names):
+        a.append("data.addColumn('number', '{name}');".format(name=name))
+    a.append("data.addRows([")
 
-    c = """
+    c1 = """
       ]);
       var options = {
         chartArea:{left:40,top:50},
         chart: {
-          title: 'Tank verses Room Temps',
+          title: 'Temps',
           subtitle: 'in Centigrade',
         },
         vAxis: {
@@ -92,8 +97,7 @@ def graph(days=30):
     }
     </script>
     """
-    return a+b+c
-
+    return '\n'.join(a) + b + c1
 
 
 def main_page(ctrl=False):
@@ -190,7 +194,7 @@ def setrelay(n):
     fri = request.args.get('fri')
     sat = request.args.get('sat')
     sun = request.args.get('sun')
-    tank_relayController.set_schedule(n,mon,tue,wed,thu,fri,sat,sun)
+    tank_relayController.set_schedule(n, mon, tue, wed, thu, fri, sat, sun)
     page = """
 <!doctype html>
 <html lang="en">
@@ -211,17 +215,21 @@ def setrelay(n):
 """
     return page
 
+
 @app.route("/otocinclus/setr0")
 def setr0():
     return setrelay(0)
+
 
 @app.route("/otocinclus/setr1")
 def setr1():
     return setrelay(1)
 
+
 @app.route("/otocinclus/setr2")
 def setr2():
     return setrelay(2)
+
 
 @app.route("/otocinclus/setr3")
 def setr3():
@@ -271,7 +279,7 @@ def temp():
 
 @app.route("/LOG")
 def log():
-    text, __, __ = temperature.get_temp_log(9999)
+    text, __, __, __ = temperature.get_temp_log(9999)
     return Response('<br>'.join(text), mimetype="text/html")
 
 
@@ -279,17 +287,20 @@ def log():
 # controller.init_timers()
 
 if __name__ == "__main__":
-    with open("main.conf") as f:
-        lines = f.read().split('\n')
-    for l in lines:
-        l = l.strip()
-        if len(l) > 0:
-            f = l.split(' ')
-            conf[f[0]] = ' '.join(f[1:])
+    try:
+        with open("main.conf") as f:
+            lines = f.read().split('\n')
+        for l in lines:
+            l = l.strip()
+            if len(l) > 0:
+                f = l.split(' ')
+                conf[f[0]] = ' '.join(f[1:])
 
+        if mydebug.TEST == 0:
+            app.run(host='0.0.0.0', port=5000)
+        else:
+            app.run(host='0.0.0.0', port=5001)
+    except IOError:
+        print "Could not read 'main.conf' config file"
 
-    if mydebug.TEST == 0:
-        app.run(host='0.0.0.0', port=5000)
-    else:
-        app.run(host='0.0.0.0', port=5001)
     # controller.stop()

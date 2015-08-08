@@ -154,11 +154,12 @@ class Schedule2:
     def save(self, file):
         with open(file, 'w') as f:
             for d in self.s:
-                f.write(hex(d)[2:] + "\n")
+                s = hex(d)[2:].replace('L', '')
+                f.write(s + "\n")
 
     @staticmethod
     def _hex_string_to_int(h):
-        return int(h, 16)
+        return int(h.strip('L'), 16)
 
     def current_state(self, day, seconds):
         bit = 1 << int(seconds / 1800)
