@@ -324,6 +324,9 @@ class GetTempLog(object):
 def get_current_temps():
     return GetTempLog().get_current()
 
+def get_current_temp(field):
+    temps =  GetTempLog().get_current_tank()
+    return temps[field]
 
 def get_current_temps_formatted():
     temps = GetTempLog().get_current()

@@ -5,7 +5,7 @@ import threading
 import time
 import os
 import logging
-
+import tank_temp as temperature
 
 comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
@@ -52,17 +52,7 @@ def output(a, b):
 class Controller(object):
     def __init__(self):
         self.relays = Relays()
-
-        # self.relay0 = self.relays.get_relay(0)
-        # self.relay1 = self.relays.get_relay(1)
-        # self.relay2 = self.relays.get_relay(2)
-        # self.relay3 = self.relays.get_relay(3)
-
-        # self.schedule1 = timer.Schedule2("timer0.sched")
-        # self.schedule2 = timer.Schedule2("timer1.sched")
-
         self.timers = []
-
         self._stop = False
 
     def init_timers(self):
@@ -70,18 +60,8 @@ class Controller(object):
             filename = "timer{n}.sched".format(n=n)
             self.timers.append(timer.Timer2(timer.Schedule2(filename), self.relays.get_relay(n)))
 
-        # self.timers.append(timer.Timer2(timer.Schedule2("timer0.sched"), self.relay0))
-        # self.timers.append(timer.Timer2(timer.Schedule2("timer1.sched"), self.relay1))
-        # self.timers.append(timer.Timer2(timer.Schedule2("timer2.sched"), self.relay2))
-        # self.timers.append(timer.Timer2(timer.Schedule2("timer3.sched"), self.relay3))
-
         for t in self.timers:
             t.start()
-
-        # self.t1.start()
-        #
-        # self.t2 = timer.Timer2(self.schedule2, self.relay1)
-        # self.t2.start()
 
         thread = threading.Thread(target=self.task)
         thread.start()
@@ -93,10 +73,19 @@ class Controller(object):
         return not self._stop
 
     def task(self):
+        count = 0
         while not self._stop:
             for _ in range(5):
                 if not self._stop:
                     time.sleep(1)
+
+            count += 1
+            if count > 12:
+                count = 0
+                if temperature.get_current_temp('tank') > 23.0:
+                    self.relays.relays[1].set_state(1)
+                else:
+                    self.relays.relays[1].set_state(0)
 
             if not self._stop:
                 if os.path.exists(comms_file):
@@ -257,12 +246,6 @@ class Relay(object):
             if not self.override:
                 self.turn_relay_off()
         self.override = (self.current_state != new_state)
-
-    # def toggle_override(self):
-    #     if self.override == 0:
-    #         self.override = 1
-    #     else:
-    #         self.override = 0
 
     def state(self):
         return self.current_state, self.timer_state, self.override
