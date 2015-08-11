@@ -6,6 +6,7 @@ import time
 import os
 import logging
 import tank_temp as temperature
+import tank_cfg
 
 comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
@@ -51,14 +52,24 @@ def output(a, b):
 
 class Controller(object):
     def __init__(self):
+        self._cfg = tank_cfg.Config()
         self.relays = Relays()
+        tank_cfg.Instances().relays = self.relays
+
         self.timers = []
+        tank_cfg.Instances().timers = self.timers
+
         self._stop = False
 
     def init_timers(self):
-        for n in range(self.relays.count):
-            filename = "timer{n}.sched".format(n=n)
-            self.timers.append(timer.Timer2(timer.Schedule2(filename), self.relays.get_relay(n)))
+        cfg = tank_cfg.Config()
+        for t in cfg.timers:
+            filename = t['name']+'.sched'
+            self.timers.append( timer.Timer2(t, timer.Schedule2(filename)) )
+        #
+        # for n in range(self.relays.count):
+        #     filename = "timer{n}.sched".format(n=n)
+        #     self.timers.append(timer.Timer2(timer.Schedule2(filename), self.relays.get_relay(n)))
 
         for t in self.timers:
             t.start()
@@ -66,9 +77,10 @@ class Controller(object):
         thread = threading.Thread(target=self.task)
         thread.start()
 
+    @property
     def running(self):
         for t in self.timers:
-            if t.running():
+            if not t.running:
                 return False
         return not self._stop
 
@@ -82,10 +94,14 @@ class Controller(object):
             count += 1
             if count > 12:
                 count = 0
-                if temperature.get_current_temp('tank') > 23.0:
-                    self.relays.relays[1].set_state(1)
-                else:
-                    self.relays.relays[1].set_state(0)
+                for r in self.relays.relays:
+                    if r.controlledby_temp:
+                        temp = temperature.get_current_temp(r.controller)
+                        logging.info("{r} {t} {temp}".format(r=r.id, t=r.controller, temp=temp))
+                        if temp > r.on_temp:
+                            r.turn_relay_on()
+                        if temp < r.off_temp:
+                            r.turn_relay_off()
 
             if not self._stop:
                 if os.path.exists(comms_file):
@@ -94,10 +110,10 @@ class Controller(object):
                     os.remove(comms_file)
                     fields = data[0].split(' ')
                     if 'togglerelay' in fields[0]:
-                        relay = int(fields[1])
+                        relay = fields[1]
                         self._toggle(relay)
                     if 'setsched' in fields[0]:
-                        relay = int(fields[1])
+                        relay = fields[1]
                         self._set_sched(relay,
                                         fields[2],
                                         fields[3],
@@ -109,11 +125,9 @@ class Controller(object):
 
             if not self._stop:
                 with open(status_file, 'w') as f:
-                    n = 0
                     for relay in self.relays.relays:
                         r, t, o = relay.state()
-                        f.write("relay{n} {r} {t} {o}\n".format(n=n, r=states[r], t=states[t], o=states[o]))
-                        n += 1
+                        f.write("{n} {r} {t} {o}\n".format(n=relay.id, r=states[r], t=states[t], o=states[o]))
                 # r, t, o = self._get_relay_state(1)
                 # status1 = "relay1 {r} {t} {o}\n".format(r=states[r], t=states[t], o=states[o])
 
@@ -123,8 +137,8 @@ class Controller(object):
     def _get_relay_state(self, n):
         return self.relays.get_relay(n).state()
 
-    def _toggle(self, n):
-        r = self.relays.get_relay(n)
+    def _toggle(self, id):
+        r = self.relays.get_relay(id)
         actual_state, tstate, ostate = r.state()
         if actual_state == 1:
             r.turn_relay_off()
@@ -132,7 +146,9 @@ class Controller(object):
             r.turn_relay_on()
 
     def _set_sched(self, relay, a, b, c, d, e, f, g):
-        self.timers[relay].new_schedule(a, b, c, d, e, f, g)
+        for t in self.timers:
+            if t.controls == relay:
+                t.new_schedule(a, b, c, d, e, f, g)
 
     def stop(self):
         self._stop = True
@@ -141,12 +157,12 @@ class Controller(object):
         self.relays.cleanup()
 
 
-def toggle_relay(n):
+def toggle_relay(id):
     while os.path.exists(comms_file):
         time.sleep(1)
 
     with open(comms_file, 'w') as f:
-        f.write("togglerelay {n} \n".format(n=n))
+        f.write("togglerelay {id} \n".format(id=id))
 
 
 def set_schedule(n, mon, tue, wed, thu, fri, sat, sun):
@@ -155,41 +171,41 @@ def set_schedule(n, mon, tue, wed, thu, fri, sat, sun):
                 format(n=n, m=mon, t=tue, w=wed, th=thu, f=fri, sa=sat, su=sun))
 
 
-def get_relay_query(n):
-    filename = "timer{n}.sched".format(n=n)
-    return timer.get_query(filename)
+def get_relay_query(id):
+    filename = "{id}.sched".format(id=id)
+    return "?r={id}&".format(id=id)+timer.get_query(filename)
 
 
-def get_relay_state_str(n):
-
+def get_relay_state_str(id):
     try:
         with open(status_file, 'r') as f:
             lines = f.read().split('\n')
 
-        fields = lines[n].split(' ')
-
-        actual = fields[1]
-        timerr = fields[2]
-        override = fields[3]
-    except IOError:
         actual = '?'
         timerr = '?'
         override = '?'
+        for l in lines:
+            if l.startswith(id):
+                fields = l.split(' ')
+                actual = fields[1]
+                timerr = fields[2]
+                override = fields[3]
+    except IOError:
+        actual = '?e'
+        timerr = '?e'
+        override = '?e'
     return "Actual:"+actual+"   Timer:"+timerr+"   Override:"+override
 
 
 class Relays(object):
     def __init__(self):
-        self.pinList = self.load_pins()
+        cfg = tank_cfg.Config()
 
         setmode(GBOARD)
-
         self._relays = []
 
-        r = 0
-        for p in self.pinList:
-            self._relays.append(Relay(r, p))
-            r += 1
+        for r in cfg._relays:
+            self._relays.append(Relay(r))
 
     @property
     def count(self):
@@ -199,15 +215,21 @@ class Relays(object):
     def relays(self):
         return self._relays
 
-    @staticmethod
-    def load_pins():
-        with open(pin_file) as f:
-            pins = f.read().strip().split('\n')
-        return map(int, pins)
+    # @staticmethod
+    # def load_pins():
+    #     with open(pin_file) as f:
+    #         pins = f.read().strip().split('\n')
+    #     return map(int, pins)
 
-    def get_relay(self, n):
-        if len(self._relays) > n:
-            return self._relays[n]
+    # def get_relay(self, n):
+    #     if len(self._relays) > n:
+    #         return self._relays[n]
+    #     return None
+
+    def get_relay(self, id):
+        for r in self._relays:
+            if r.id == id:
+                return r
         return None
 
     @classmethod
@@ -215,25 +237,81 @@ class Relays(object):
         cleanup()
 
 
+class RelayState:
+    OFF = 0
+    ON = 1
+    FOFF = 2
+    FON = 3
+    UNKNOWN = 4
+
+    @classmethod
+    def toString(cls,n):
+        if n == cls.OFF:
+            return 'OFF'
+        if n == cls.ON:
+            return 'ON'
+        if n == cls.FOFF:
+            return 'FORCED OFF'
+        if n == cls.FON:
+            return 'FORCED ON'
+        return 'UNKNOWN'
+
+
 class Relay(object):
-    def __init__(self, new_id, pin):
-        self.id = new_id
-        self.pin = pin
-        self.current_state = 0
+    def __init__(self, cfg):
+        self.id = cfg['name']
+        self.pin = cfg['pin']
+        self.controller = cfg['controller']
+        self.controlledby_temp = False
+        self.on_temp = None
+        self.off_temp = None
+
+        if 'none' not in self.controller:
+            for t in tank_cfg.Instances().temps:
+                if self.controller in t.name:
+                    self.controlledby_temp = True
+                    self.on_temp = cfg['ontemp']
+                    self.off_temp = cfg['offtemp']
+
+        self.current_state = RelayState.UNKNOWN
         self.timer_state = 0
         setup(self.pin, GOUT)
         self.turn_relay_off()
         self.override = 0
 
     def turn_relay_on(self):
-        logging.info(str(self.id)+" ON")
+        if self.current_state != RelayState.ON:
+            logging.info(str(self.id)+" ON")
         output(self.pin, GLOW)
-        self.current_state = 1
+        self.current_state = RelayState.ON
 
     def turn_relay_off(self):
-        logging.info(str(self.id)+" OFF")
+        if self.current_state != RelayState.OFF:
+            logging.info(str(self.id)+" OFF")
         output(self.pin, GHIGH)
-        self.current_state = 0
+        self.current_state = RelayState.OFF
+
+    def force_relay_on(self):
+        if self.current_state != RelayState.FON:
+            logging.info(str(self.id)+" FON")
+        output(self.pin, GLOW)
+        self.current_state = RelayState.FON
+
+    def force_relay_off(self):
+        if self.current_state != RelayState.FOFF:
+            logging.info(str(self.id)+" FOFF")
+        output(self.pin, GHIGH)
+        self.current_state = RelayState.FOFF
+
+    def unforce_relay(self):
+        if self.current_state == RelayState.FOFF:
+            logging.info(str(self.id)+" OFF")
+            output(self.pin, GLOW)
+            self.current_state = RelayState.OFF
+        if self.current_state == RelayState.FON:
+            logging.info(str(self.id)+" ON")
+            output(self.pin, GHIGH)
+            self.current_state = RelayState.ON
 
     def set_state(self, new_state):
         # print "{id} {state}".format(id=self.id, state=new_state)

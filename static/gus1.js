@@ -191,7 +191,8 @@ function create_timepicker() {
 
     function update_query() {
         var query =
-            '?mon=' + get_day_value('monday') +
+            '?r=' + params['r'] +
+            '&mon=' + get_day_value('monday') +
             '&tue=' + get_day_value('tuesday') +
             '&wed=' + get_day_value('wednesday') +
             '&thu=' + get_day_value('thursday') +

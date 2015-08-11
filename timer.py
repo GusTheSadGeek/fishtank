@@ -2,6 +2,7 @@
 import datetime
 import threading
 import time
+import tank_cfg
 # import relayController
 import logging
 # class Relay:
@@ -142,7 +143,7 @@ class Schedule2:
         return 0
 
     def get_query(self):
-        q = "?" + "mon=" + (hex(self.s[0])[2:]) +\
+        q = "mon=" + (hex(self.s[0])[2:]) +\
             "&" + "tue=" + hex(self.s[1])[2:]+\
             "&"+"wed="+hex(self.s[2])[2:]+\
             "&"+"thu="+hex(self.s[3])[2:]+\
@@ -167,9 +168,11 @@ class Schedule2:
 
 
 class Timer2:
-    def __init__(self, schedule, relay):
+    def __init__(self, cfg, schedule):
         self.schedule = schedule
-        self.relay = relay
+        self.name = cfg['name']
+        self.controls = cfg['controls']
+        self.relay = tank_cfg.Instances().relays.get_relay(self.controls)
         self.current_state = '?'
         self.thread = threading.Thread(target=self.timer_thread)
         self._stop = False
@@ -186,7 +189,7 @@ class Timer2:
         state = self.schedule.current_state(day_of_week, seconds_since_midnight)
 
         if state != self.current_state:
-            logging.info('Setting Relay {r} to {s}'.format(r=self.relay.id, s=state))
+            logging.info('Timer Setting {r} to {s}'.format(r=self.relay.id, s=state))
             self.current_state = state
         if state:
             self.relay.set_state(1)
@@ -211,6 +214,7 @@ class Timer2:
         logging.warn("timer stopping {r}".format(r=self.relay.id))
         self._stop = True
 
+    @property
     def running(self):
         return not self._stop
 

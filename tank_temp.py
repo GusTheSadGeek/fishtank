@@ -8,6 +8,7 @@ import threading
 
 import logging
 import random
+import tank_cfg
 
 temp_file = '/var/log/tank/temps.txt'
 current_temp_file = '/mnt/ram/current_temps.txt'
@@ -29,10 +30,10 @@ def setup_log():
 
 
 class TempSensor(object):
-    def __init__(self, filename, name):
-        self._sensor_file = filename
+    def __init__(self, cfg):
+        self._sensor_file = cfg['sensor']
         self._current_temp = 0
-        self._name = name
+        self._name = cfg['name']
 
     @property
     def current_temp(self):
@@ -83,41 +84,47 @@ class TempRecorder(object):
             os.system('modprobe w1-gpio')
             os.system('modprobe w1-therm')
 
+        cfg = tank_cfg.Config()
+        self.interval = cfg.temp_interval
+
         self.minutes = False
         self.sensors = []
 
-        self.load(temp_sensor_conf_file)
+        for t in cfg.temps:
+            self.sensors.append(TempSensor(t))
 
-        # self.temp_sensor1 = "/sys/bus/w1/devices/28-0014117fb1ff/w1_slave"
-        # self.temp_sensor2 = "/sys/bus/w1/devices/28-00000676eb5f/w1_slave"
-        #
-        # self.room_sensor = TempSensor(self.temp_sensor1)
-        # self.tank_sensor = TempSensor(self.temp_sensor2)
+        tank_cfg.Instances().temps = self.sensors
+
+#        self.load(temp_sensor_conf_file)
 
         self.lines = ''
         self._stop = False
         self._stopped = True
 
     @property
+    def running(self):
+        return not self._stopped
+
+    @property
     def stopped(self):
         return self._stopped
 
-    def load(self, filename):
-        try:
-            with open(filename, 'r') as f:
-                lines = f.read().split('\n')
-            self.sensors = []
-            for l in lines:
-                if len(l) > 2:
-                    if ":" in l:
-                        f = l.split(':')
-                        ts = TempSensor(f[1], f[0])
-                        self.sensors.append(ts)
-                    else:
-                        self.minutes = True
-        except IOError:
-            return 1
-        return 0
+    # def load(self, filename):
+    #     try:
+    #         with open(filename, 'r') as f:
+    #             lines = f.read().split('\n')
+    #         self.sensors = []
+    #         for l in lines:
+    #             if len(l) > 2:
+    #                 if ":" in l:
+    #                     f = l.split(':')
+    #                     ts = TempSensor(f[1], f[0])
+    #                     self.sensors.append(ts)
+    #                 else:
+    #                     self.minutes = True
+    #     except IOError:
+    #         return 1
+    #     return 0
 
     def get_temp(self, index):
         if len(self.sensors) < index:
@@ -165,51 +172,62 @@ class TempRecorder(object):
     def stop(self):
         self._stop = True
 
+
+    def time_next_recording(self):
+        now = datetime.datetime.now()
+        secs_since_hour = (now.minute * 60) + now.second
+        i = 0
+        while i < secs_since_hour:
+            i += self.interval
+        r = time.time() + i - secs_since_hour
+        return r
+
+
     def task(self):
         logging.info("temp recorder task starting")
-        last_min = 1
         self._stopped = False
-        while not self._stop:
-            now = datetime.datetime.now()
-            temps = self.read_all()
-            if now.minute < last_min or self.minutes:
+        try:
+            while not self._stop:
+                tnr = self.time_next_recording()
+                temps = self.read_all()
+                if tnr < time.time():
+                    now = datetime.datetime.now()
+                    temps_output = []
+                    for t in temps:
+                        temps_output.append("{temp:6.3f}".format(temp=t))
 
-                temps_output = []
-                for t in temps:
-                    temps_output.append("{temp:2.3f}".format(temp=t))
+                    date = "{a},{b},{c},{d},{e}".\
+                        format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
 
-                date = "{a},{b},{c},{d},{e}".\
-                    format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
+                    output2 = "{date:s},{temps:s}\n".\
+                        format(date=date, temps=','.join(temps_output))
 
-                output2 = "{date:s},{temps:s}\n".\
-                    format(date=date, temps=','.join(temps_output))
+                    try:
+                        # output2 = u"[new Date({date:s}),{temp1:2.3f},{temp2:2.3f}],\n".\
+                        #     format(date=date, temp1=self.room_temp, temp2=self.tank_temp)
+                        with open(temp_file, 'a') as f:
+                            f.write(output2)
+                    except IOError as e:
+                        logging.error(str(e))
+                        logging.error("Error writing to temp file {f}".format(temp_file))
 
                 try:
-                    # output2 = u"[new Date({date:s}),{temp1:2.3f},{temp2:2.3f}],\n".\
-                    #     format(date=date, temp1=self.room_temp, temp2=self.tank_temp)
-                    with open(temp_file, 'a') as f:
-                        f.write(output2)
+                    with open(current_temp_file, 'w') as f:
+                        for s in self.sensors:
+                            s = "{name}={temp:6.3f}\n".format(name=s.name, temp=s.current_temp)
+                            f.write(s)
                 except IOError as e:
                     logging.error(str(e))
-                    logging.error("Error writing to temp file {f}".format(temp_file))
-            last_min = now.minute
+                    logging.error("Error writing to temp file {f}".format(current_temp_file))
 
-            try:
-                with open(current_temp_file, 'w') as f:
-                    for s in self.sensors:
-                        s = "{name}={temp:2.3f}\n".format(name=s.name, temp=s.current_temp)
-                        f.write(s)
-            except IOError as e:
-                logging.error(str(e))
-                logging.error("Error writing to temp file {f}".format(current_temp_file))
-
-            q = 0
-            while q < 60 and not self._stop:
                 time.sleep(1)
-                q += 1
-
-        logging.critical("temp recorder task stopped")
-        self._stopped = True
+                q = min(59, tnr - time.time())
+                while q > 0 and not self._stop:
+                    time.sleep(1)
+                    q -= 1
+        finally:
+            logging.critical("temp recorder task stopped")
+            self._stopped = True
 
     def task_old(self):
         logging.info("temp recorder task starting")
@@ -322,19 +340,31 @@ class GetTempLog(object):
 
 
 def get_current_temps():
+    """
+    :return: All temps as strings
+    """
     return GetTempLog().get_current()
 
 def get_current_temp(field):
-    temps =  GetTempLog().get_current_tank()
-    return temps[field]
+    """
+    :param field: Name of temp required
+    :return: requested temp as float
+    """
+    temps = get_current_temps()
+    try:
+        temp = float(temps[field])
+    except KeyError:
+        temp = 0.0
+    return temp
 
 def get_current_temps_formatted():
+    """
+    :return: A formated string of all temps
+    """
     temps = GetTempLog().get_current()
-
     out = []
     for name, value in temps.iteritems():
         out.append(u"{name:s}:{temp:s}\u00B0".format(name=name, temp=value))
-
     output = u"    ".join(out)
     return output
 
