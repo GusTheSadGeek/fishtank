@@ -151,10 +151,14 @@ class Controller(object):
                 t.new_schedule(a, b, c, d, e, f, g)
 
     def stop(self):
-        self._stop = True
-        for t in self.timers:
-            t.stop()
-        self.relays.cleanup()
+        if not self._stop:
+            print "Stopping Timers"
+            self._stop = True
+            for t in self.timers:
+                t.stop()
+            print "Timers stopped"
+            self.relays.cleanup()
+            print "Cleaning up Relays"
 
 
 def toggle_relay(id):

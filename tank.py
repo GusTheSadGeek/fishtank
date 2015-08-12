@@ -28,15 +28,17 @@ def main():
     temp_recorder.start()
 
     try:
+        print ("TANK Monitor Running....")
         while controller.running and temp_recorder.running:
             time.sleep(60)
     except KeyboardInterrupt:
-        print "\nQUITTING\n"
+        print("\nQUITTING\n")
         logging.warn("Ctrl-C")
-        controller.stop()
         temp_recorder.stop()
+        controller.stop()
         while controller.running or temp_recorder.running:
             controller.stop()
+            temp_recorder.stop()
             time.sleep(0.1)
 
 

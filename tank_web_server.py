@@ -6,10 +6,14 @@ import tank_relayController
 import mydebug
 from flask import Flask, send_file, Response, request
 import tank_cfg
+# import sys
+
 app = Flask(__name__)
 
 prog = None
 conf = []
+prev_count = 30
+current_path = '/'
 
 
 def c(n):
@@ -52,19 +56,28 @@ def gettimestamp():
 def graph(days=30):
     b, mn, mx, sensor_names = LogStuff().get_temp_log(days)
 
-    a = []
-
-    a.append("""
-    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    a = [
+        """<script type="text/javascript" src="https://www.google.com/jsapi"></script>
     <script type="text/javascript">
     google.load('visualization', '1.1', {packages: ['corechart', 'line']});
     google.setOnLoadCallback(drawChart);
     function drawChart() {
       var data = new google.visualization.DataTable();
       data.addColumn('datetime', 'Hours');
-    """)
+    """
+    ]
 
-    for name in reversed(sensor_names):
+    # a.append("""
+    # <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    # <script type="text/javascript">
+    # google.load('visualization', '1.1', {packages: ['corechart', 'line']});
+    # google.setOnLoadCallback(drawChart);
+    # function drawChart() {
+    #   var data = new google.visualization.DataTable();
+    #   data.addColumn('datetime', 'Hours');
+    # """)
+
+    for name in sensor_names:
         a.append("data.addColumn('number', '{name}');".format(name=name))
     a.append("data.addRows([")
 
@@ -96,22 +109,25 @@ def graph(days=30):
 
 
 def main_page(ctrl=False):
-    line = '<a href="/all"> All </a><br>'
-    line += '<a href="/month"> Month </a><br>'
-    line += '<a href="/week"> Week </a><br>'
+    line = '<a href="{cp}?d=9999"> All </a><br>'.format(cp=current_path)
+    line += '<a href="{cp}?d=30"> Month </a><br>'.format(cp=current_path)
+    line += '<a href="{cp}?d=7"> Week </a><br>'.format(cp=current_path)
+    line += '<a href="{cp}?d=1"> Day </a><br>'.format(cp=current_path)
     line += '<br><div id="linechart_material"></div>'
     line += gettimestamp() + "<br><br>"
     line += temperature.get_current_temps_formatted()+"<br><br>"
     for relay in conf:
-        line += relay['name'] +' '+tank_relayController.get_relay_state_str(relay['name'])+"<br>"
+        line += relay['name'] + ' ' + tank_relayController.get_relay_state_str(relay['name']) + "<br>"
     line += '<br><br>'
     if ctrl:
         for relay in conf:
-            line += '<a href="/TR?r={n}">Toggle {r}</a></br>'.format(n=relay['name'], r=relay['name'])
+            line += '<a href="{cp}/TR?r={n}">Toggle {r}</a></br>'.\
+                format(cp=current_path, n=relay['name'], r=relay['name'])
         line += '<br><br>'
         for relay in conf:
             q = tank_relayController.get_relay_query(relay['name'])
-            line += '<a href="/otocinclus/setr{q}">Set {r} Timings</a></br>'.format(q=q, r=relay['name'])
+            line += '<a href="{cp}/setr{q}">Set {r} Timings</a></br>'.\
+                format(cp=current_path, q=q, r=relay['name'])
     line += '</br>'
 #    line += "Relay 3 "+tank_relayController.get_relay_state_str(2)+"<br>"
 #    line += "Relay 4 "+tank_relayController.get_relay_state_str(3)+"<br><br>"
@@ -126,38 +142,54 @@ def main_page(ctrl=False):
     return line
 
 
+def view(ctrl=False):
+    global prev_count
+    try:
+        day_count = int(request.args.get('d'))
+    except (ValueError, TypeError):
+        day_count = None
+    if day_count is None:
+        if prev_count is not None:
+            day_count = prev_count
+        else:
+            day_count = 30
+    prev_count = day_count
+
+    line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url={cp}" />\n{graph}</head>\n<body>\n'.\
+        format(cp=current_path, graph = graph(day_count))
+    line += main_page(ctrl)
+    return line
+
+
 @app.route("/")
-def view():
-    return view_month()
-
-
-@app.route("/month")
-def view_month():
-    line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url=/" />\n' + graph(30) + '</head>\n<body>\n'
-    line += main_page()
-    return line
-
-
-@app.route("/week")
-def view_week():
-    line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url=/" />\n' + graph(7) + '</head>\n<body>\n'
-    line += main_page()
-    return line
-
-
-@app.route("/all")
-def view_all():
-    line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url=/" />\n' + graph(9999) + '</head>\n<body>\n'
-    line += main_page()
-    return line
+def rootview():
+    return view(False)
+    # global prev_count
+    # try:
+    #     day_count = int(request.args.get('d'))
+    # except (ValueError, TypeError):
+    #     day_count = None
+    # if day_count is None:
+    #     if prev_count is not None:
+    #         day_count = prev_count
+    #     else:
+    #         day_count = 30
+    # prev_count = day_count
+    # line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url=/" />\n' + \
+    #        graph(day_count) + '</head>\n<body>\n'
+    # line += main_page()
+    # return line
 
 
 @app.route("/otocinclus")
 def control():
-    line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url=/otocinclus" />\n' \
-           + graph() + '</head>\n<body>\n'
-    line += main_page(True)
-    return line
+    global current_path
+    current_path = '/otocinclus'
+    return view(True)
+    # line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url=/otocinclus" />\n' \
+    #        + graph() + '</head>\n<body>\n'
+    # line += main_page(True)
+    # return line
 
 
 @app.route("/otocinclus/setr")
@@ -227,7 +259,7 @@ def setrelay():
 # #    controller.relays.get_relay(1).toggle_override()
 #     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
-@app.route("/TR")
+@app.route("/otocinclus/TR")
 def toggle_relay():
     relay_name = request.args.get('r')
     print relay_name

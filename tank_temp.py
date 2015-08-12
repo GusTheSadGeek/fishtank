@@ -62,7 +62,10 @@ class TempSensor(object):
     def read_temp(self):
         if mydebug.TEMP_TEST != 0:
             q = random.randint(0, 100)
-            self._current_temp = 15.0 + q/10.0
+            if self._name == 'tank':
+                self._current_temp = 15.0 + q/20.0
+            else:
+                self._current_temp = 25.0 + q/20.0
             return self._current_temp
         else:
             lines = self._get_temp_raw()
@@ -170,8 +173,9 @@ class TempRecorder(object):
         thread.start()
 
     def stop(self):
-        self._stop = True
-
+        if not self._stop:
+            print "Stopping Temp Recording.."
+            self._stop = True
 
     def time_next_recording(self):
         now = datetime.datetime.now()
@@ -181,7 +185,6 @@ class TempRecorder(object):
             i += self.interval
         r = time.time() + i - secs_since_hour
         return r
-
 
     def task(self):
         logging.info("temp recorder task starting")
@@ -228,6 +231,14 @@ class TempRecorder(object):
         finally:
             logging.critical("temp recorder task stopped")
             self._stopped = True
+            with open(current_temp_file, 'w') as f:
+                for s in self.sensors:
+                    s = "{name}=STOPPED\n".format(name=s.name)
+                    f.write(s)
+            print "Temp Recording stopped"
+
+
+
 
     def task_old(self):
         logging.info("temp recorder task starting")
@@ -315,17 +326,20 @@ class GetTempLog(object):
 
         index = 0
         day_count = 0
-        last_day = -99
+        last_day = None
         for index in range(len(log)-1, -1, -1):
             try:
-                fields = log[index].strip(',').split(',')
-                temps = fields[5:]
-                for t in temps:
-                    self.update_min_max_temps(float(t))
-                day = fields[2]
-                if day != last_day:
-                    day_count += 1
-                    last_day = day
+                line = log[index].strip(',')
+                if len(line) > 5:
+                    fields = line.split(',')
+                    temps = fields[5:]
+                    for t in temps:
+                        self.update_min_max_temps(float(t))
+                    day = fields[2]
+                    if day != last_day:
+                        if last_day is not None:
+                            day_count += 1
+                        last_day = day
             except IndexError:
                 logging.error("Index error in log file {line}".format(line=log[index]))
             except ValueError:
@@ -334,7 +348,7 @@ class GetTempLog(object):
             if day_count >= days:
                 break
 
-        ret_lines = log[index:]
+        ret_lines = log[(index+1):]
 
         return ret_lines
 
@@ -344,6 +358,7 @@ def get_current_temps():
     :return: All temps as strings
     """
     return GetTempLog().get_current()
+
 
 def get_current_temp(field):
     """
@@ -356,6 +371,7 @@ def get_current_temp(field):
     except KeyError:
         temp = 0.0
     return temp
+
 
 def get_current_temps_formatted():
     """
