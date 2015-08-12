@@ -64,7 +64,7 @@ class Controller(object):
     def init_timers(self):
         cfg = tank_cfg.Config()
         for t in cfg.timers:
-            filename = t['name']+'.sched'
+            filename = (t['name']+'.sched').replace(' ', '_')
             self.timers.append( timer.Timer2(t, timer.Schedule2(filename)) )
         #
         # for n in range(self.relays.count):
@@ -176,7 +176,7 @@ def set_schedule(n, mon, tue, wed, thu, fri, sat, sun):
 
 
 def get_relay_query(id):
-    filename = "{id}.sched".format(id=id)
+    filename = ("{id}.sched".format(id=id)).replace(' ', '_')
     return "?r={id}&".format(id=id)+timer.get_query(filename)
 
 

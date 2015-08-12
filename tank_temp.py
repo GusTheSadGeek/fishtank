@@ -187,11 +187,11 @@ class TempRecorder(object):
         return r
 
     def task(self):
+        tnr = self.time_next_recording()
         logging.info("temp recorder task starting")
         self._stopped = False
         try:
             while not self._stop:
-                tnr = self.time_next_recording()
                 temps = self.read_all()
                 if tnr < time.time():
                     now = datetime.datetime.now()
@@ -223,8 +223,9 @@ class TempRecorder(object):
                     logging.error(str(e))
                     logging.error("Error writing to temp file {f}".format(current_temp_file))
 
-                time.sleep(1)
-                q = min(59, tnr - time.time())
+                time.sleep(2)
+                tnr = self.time_next_recording()
+                q = min(58, tnr - time.time())
                 while q > 0 and not self._stop:
                     time.sleep(1)
                     q -= 1
