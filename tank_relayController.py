@@ -65,14 +65,14 @@ class Controller(object):
         cfg = tank_cfg.Config()
         for t in cfg.timers:
             filename = (t['name']+'.sched').replace(' ', '_')
-            self.timers.append( timer.Timer2(t, timer.Schedule2(filename)) )
+            self.timers.append( timer.Timer(t, timer.Schedule(filename)) )
         #
         # for n in range(self.relays.count):
         #     filename = "timer{n}.sched".format(n=n)
         #     self.timers.append(timer.Timer2(timer.Schedule2(filename), self.relays.get_relay(n)))
 
-        for t in self.timers:
-            t.start()
+        # for t in self.timers:
+        #     t.start()
 
         thread = threading.Thread(target=self.task)
         thread.start()
@@ -90,6 +90,9 @@ class Controller(object):
             for _ in range(5):
                 if not self._stop:
                     time.sleep(1)
+
+            for r in self.relays.relays:
+                r.tick()
 
             count += 1
             if count > 12:
@@ -263,25 +266,37 @@ class RelayState:
 
 class Relay(object):
     def __init__(self, cfg):
-        self.id = cfg['name']
-        self.pin = cfg['pin']
-        self.controller = cfg['controller']
-        self.controlledby_temp = False
-        self.on_temp = None
-        self.off_temp = None
+        self.id = cfg[tank_cfg.ITEM_NAME]
+        self.pin = cfg[tank_cfg.ITEM_NAME]
+        self.controlledby = cfg[tank_cfg.ITEM_CONTROLLEDBY]
+        self.controller = None
 
-        if 'none' not in self.controller:
-            for t in tank_cfg.Instances().temps:
-                if self.controller in t.name:
-                    self.controlledby_temp = True
-                    self.on_temp = cfg['ontemp']
-                    self.off_temp = cfg['offtemp']
+        self.on_temp = cfg[tank_cfg.ITEM_ONVAL]
+        self.off_temp = cfg[tank_cfg.ITEM_OFFVAL]
+
+        # if 'none' not in self.controller:
+        #     for t in tank_cfg.Instances().temps:
+        #         if self.controller in t.name:
+        #             self.controlledby_temp = True
+        #             self.on_temp = cfg['ontemp']
+        #             self.off_temp = cfg['offtemp']
 
         self.current_state = RelayState.UNKNOWN
-        self.timer_state = 0
+        # self.timer_state = 0
+        self.override = 0
+
+    def init(self):
+        if self.controlledby is not None:
+            self.controller = tank_cfg.Config().get_item(self.controlledby)
         setup(self.pin, GOUT)
         self.turn_relay_off()
-        self.override = 0
+
+    def tick(self):
+        new_state = self.controller.get_new_relay_state(self.on_temp, self.off_temp)
+        if new_state == 1:
+            self.set_state(True)
+        if new_state == -1:
+            self.set_state(False)
 
     def turn_relay_on(self):
         if self.current_state != RelayState.ON:
@@ -320,17 +335,17 @@ class Relay(object):
     def set_state(self, new_state):
         # print "{id} {state}".format(id=self.id, state=new_state)
         if new_state:
-            self.timer_state = 1
+            self.controller_state = 1
             if not self.override:
                 self.turn_relay_on()
         else:
-            self.timer_state = 0
+            self.controller_state = 0
             if not self.override:
                 self.turn_relay_off()
         self.override = (self.current_state != new_state)
 
     def state(self):
-        return self.current_state, self.timer_state, self.override
+        return self.current_state, self.controller_state, self.override
 
 
 def setup_log():

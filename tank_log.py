@@ -9,7 +9,6 @@ import threading
 import logging
 import random
 import tank_cfg
-import tank_log
 
 temp_file = '/var/log/tank/temps.txt'
 current_temp_file = '/mnt/ram/current_temps.txt'
@@ -30,119 +29,33 @@ def setup_log():
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
 
-class TempSensor(object):
-    def __init__(self, cfg):
-        self._sensor_file = cfg['sensor']
-        self._current_temp = 0
-        self._name = cfg['name']
-        self._next_read_time = time.time()
-        self._logger = tank_log.TankLog()
-
-    def init(self):
-        pass
-
-    @property
-    def current_value(self):
-        return self._current_temp
-
-    @property
-    def name(self):
-        return self._name
-
-    def get_new_relay_state(self, onval=None, offval=None):
-        if onval > offval:
-            if self._current_temp >= onval:
-                return 1
-            if self._current_temp < offval:
-                return -1
-        else:
-            if self._current_temp <= onval:
-                return 1
-            if self._current_temp > offval:
-                return -1
-        return 0
-
-    def tick(self):
-        now = time.time()
-        if now >= self._next_read_time:
-            self._read_temp()
-            self._next_read_time = now + 60
-            logging.info("{s} temp {t}".format(s=self.name, t=self._current_temp))
-            self._logger.log_value(self.name, "{temp:6.3f}".format(temp=self._current_temp))
-
-
-    @property
-    def current_temp(self):
-        return self._current_temp
-
-    def _get_temp_raw(self):
-        if mydebug.TEMP_TEST == 0:
-            try:
-                with open(self._sensor_file, 'r') as f:
-                    lines = f.readlines()
-            except IOError:
-                lines = None
-                logging.error("Failed to read sensor {f}".format(f=self._sensor_file))
-                pass
-        else:
-            lines = [
-                "76 01 55 00 7f ff 0c 10 ee : crc=ee YES",
-                "76 01 55 00 7f ff 0c 10 ee t=23375"
-            ]
-        return lines
-
-    def _read_temp(self):
-        if mydebug.TEMP_TEST != 0:
-            q = random.randint(0, 100)
-            if self._name.startswith('tank'):
-                self._current_temp = 20.0 + q/20.0
-            else:
-                self._current_temp = 25.0 + q/20.0
-            return self._current_temp
-        else:
-            lines = self._get_temp_raw()
-            while lines is not None and lines[0].strip()[-3:] != 'YES':
-                time.sleep(0.2)
-                lines = self._get_temp_raw()
-
-            temp_output = lines[1].find('t=')
-            if temp_output != -1:
-                temp_string = lines[1].strip()[temp_output+2:]
-                self._current_temp = float(temp_string) / 1000.0
-                return self._current_temp
-
-
-class TempRecorder(object):
+class TankLog(object):
+    """
+    Borg (singleton) class
+    """
+    __shared_state = {}
 
     def __init__(self):
-        if mydebug.TEMP_TEST == 0:
-            os.system('modprobe w1-gpio')
-            os.system('modprobe w1-therm')
+        self.__dict__ = self.__shared_state
+        if '_first_time' not in self.__dict__:
+            self._first_time = False
+            self.lines = ''
+            self.current_values={}
 
-        cfg = tank_cfg.Config()
-        self.interval = cfg.temp_interval
+    def log_value(self, key, value):
+        self.current_values[key] = str(value)
 
-        self.minutes = False
-        self.sensors = []
+    def tick(self):
+        try:
+            with open(current_temp_file, 'w') as f:
+                for key, value in self.current_values.iteritems():
+                    s = "{name}={temp}\n".format(name=key, temp=value)
+                    f.write(s)
+        except IOError as e:
+            logging.error(str(e))
+            logging.error("Error writing to temp file {f}".format(current_temp_file))
 
-        for t in cfg.temps:
-            self.sensors.append(TempSensor(t))
 
-        tank_cfg.Instances().temps = self.sensors
-
-#        self.load(temp_sensor_conf_file)
-
-        self.lines = ''
-        self._stop = False
-        self._stopped = True
-
-    @property
-    def running(self):
-        return not self._stopped
-
-    @property
-    def stopped(self):
-        return self._stopped
 
     # def load(self, filename):
     #     try:
@@ -231,10 +144,10 @@ class TempRecorder(object):
                     for t in temps:
                         temps_output.append("{temp:6.3f}".format(temp=t))
 
-                    date = "{a},{b},{c},{d},{e}".\
+                    date = "{a},{b},{c},{d},{e}". \
                         format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
 
-                    output2 = "{date:s},{temps:s}\n".\
+                    output2 = "{date:s},{temps:s}\n". \
                         format(date=date, temps=','.join(temps_output))
 
                     try:
@@ -395,18 +308,18 @@ def get_temp_log(days):
 
 
 def convert_log(infile, outfile):
-        try:
-            with open(infile, 'r') as f:
-                log = f.readlines()
-        except IOError:
-            log = "error"
+    try:
+        with open(infile, 'r') as f:
+            log = f.readlines()
+    except IOError:
+        log = "error"
 
-        with open(outfile, 'w') as f:
-            for l in log:
-                fields = l.split(',')
-                a = ','.join(fields[1:4])
-                newline = "2015,{a},0,{b},{c},\n".format(a=a, b=fields[5], c=fields[6][:-1])
-                f.write(newline)
+    with open(outfile, 'w') as f:
+        for l in log:
+            fields = l.split(',')
+            a = ','.join(fields[1:4])
+            newline = "2015,{a},0,{b},{c},\n".format(a=a, b=fields[5], c=fields[6][:-1])
+            f.write(newline)
 
 
 # class Temp():

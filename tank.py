@@ -1,9 +1,10 @@
 import logging
 import os
-import tank_relayController
+# import tank_relayController
 import time
-import tank_temp
-
+# import tank_temp
+import tank_cfg
+import tank_log
 
 def setup_log():
     default_log_dir = r'/var/log/tank/'
@@ -19,27 +20,41 @@ def setup_log():
 def main():
     setup_log()
     logging.info("STARTED")
+    tank_logger = tank_log.TankLog()
 
-    temp_recorder = tank_temp.TempRecorder()
+    cfg = tank_cfg.Config()
 
-    controller = tank_relayController.Controller()
-    controller.init_timers()
+    for item in cfg.items:
+        item[tank_cfg.ITEM_OBJECT].init()
 
-    temp_recorder.start()
+    print ("TANK Monitor Running....")
+    while True:
+        time.sleep(5)
+        for item in cfg.items:
+            item[tank_cfg.ITEM_OBJECT].tick()
+        tank_logger.tick()
 
-    try:
-        print ("TANK Monitor Running....")
-        while controller.running and temp_recorder.running:
-            time.sleep(60)
-    except KeyboardInterrupt:
-        print("\nQUITTING\n")
-        logging.warn("Ctrl-C")
-        temp_recorder.stop()
-        controller.stop()
-        while controller.running or temp_recorder.running:
-            controller.stop()
-            temp_recorder.stop()
-            time.sleep(0.1)
+    #
+    # temp_recorder = tank_temp.TempRecorder()
+    #
+    # controller = tank_relayController.Controller()
+    # controller.init_timers()
+    #
+    # temp_recorder.start()
+    #
+    # try:
+    #     print ("TANK Monitor Running....")
+    #     while controller.running and temp_recorder.running:
+    #         time.sleep(60)
+    # except KeyboardInterrupt:
+    #     print("\nQUITTING\n")
+    #     logging.warn("Ctrl-C")
+    #     temp_recorder.stop()
+    #     controller.stop()
+    #     while controller.running or temp_recorder.running:
+    #         controller.stop()
+    #         temp_recorder.stop()
+    #         time.sleep(0.1)
 
 
 if __name__ == '__main__':
