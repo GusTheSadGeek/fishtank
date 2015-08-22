@@ -24,6 +24,7 @@ def main():
 
     cfg = tank_cfg.Config()
 
+    tank_logger.init()
     for item in cfg.items:
         item[tank_cfg.ITEM_OBJECT].init()
 

@@ -17,6 +17,8 @@ ITEM_OFFVAL = 'offvalue'
 ITEM_CONTROLLEDBY = 'controlledby'
 ITEM_CONTROLS = 'controls'
 ITEM_SENSOR = 'sensor'
+ITEM_GRAPH = 'graph'
+ITEM_LOGCOL = 'logcol'
 ITEM_OBJECT = 'object'
 
 
@@ -130,6 +132,8 @@ class Config(object):
         self.add_val(item, section, ITEM_CONTROLLEDBY)
         self.add_val(item, section, ITEM_CONTROLS)
         self.add_val(item, section, ITEM_SENSOR)
+        self.add_val(item, section, ITEM_GRAPH)
+        self.add_val(item, section, ITEM_LOGCOL)
 
         if section.startswith('relay'):
             item_type = RELAY_TYPE

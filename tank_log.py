@@ -41,6 +41,14 @@ class TankLog(object):
             self._first_time = False
             self.lines = ''
             self.current_values={}
+            self.interval = 120
+            self.cols = {}
+            self.tnr = self.time_next_recording()
+
+    def init(self):
+        for item in tank_cfg.Config().items:
+            if item[tank_cfg.ITEM_LOGCOL] is not None:
+                self.cols[item[tank_cfg.ITEM_LOGCOL]] = item[tank_cfg.ITEM_NAME]
 
     def log_value(self, key, value):
         self.current_values[key] = str(value)
@@ -55,6 +63,96 @@ class TankLog(object):
             logging.error(str(e))
             logging.error("Error writing to temp file {f}".format(current_temp_file))
 
+        now = time.time()
+        diff = self.tnr - now
+        logging.info("{n} {tnr} {diff}".format(n=now,tnr=self.tnr,diff=diff))
+        if self.tnr < time.time():
+            logging.info("logging")
+            now = datetime.datetime.now()
+            temps_output = []
+            for col in range(10):
+                if str(col) in self.cols:
+                    temps_output.append("{val}".format(val=self.current_values[self.cols[str(col)]]))
+
+            date = "{a},{b},{c},{d},{e}". \
+                format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
+
+            output2 = "{date:s},{temps:s}\n". \
+                format(date=date, temps=','.join(temps_output))
+
+            try:
+                with open(temp_file, 'a') as f:
+                    f.write(output2)
+            except IOError as e:
+                logging.error(str(e))
+                logging.error("Error writing to temp file {f}".format(temp_file))
+
+            self.tnr = self.time_next_recording()
+
+    def time_next_recording(self):
+        now = datetime.datetime.now()
+        secs_since_hour = (now.minute * 60) + now.second
+        i = 0
+        while i < secs_since_hour:
+            i += self.interval
+        r = time.time() + i - secs_since_hour
+        return r
+
+
+
+
+
+    def task(self):
+        tnr = self.time_next_recording()
+        logging.info("temp recorder task starting")
+        self._stopped = False
+        try:
+            while not self._stop:
+                temps = self.read_all()
+                if tnr < time.time():
+                    now = datetime.datetime.now()
+                    temps_output = []
+                    for t in temps:
+                        temps_output.append("{temp:6.3f}".format(temp=t))
+
+                    date = "{a},{b},{c},{d},{e}". \
+                        format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
+
+                    output2 = "{date:s},{temps:s}\n". \
+                        format(date=date, temps=','.join(temps_output))
+
+                    try:
+                        # output2 = u"[new Date({date:s}),{temp1:2.3f},{temp2:2.3f}],\n".\
+                        #     format(date=date, temp1=self.room_temp, temp2=self.tank_temp)
+                        with open(temp_file, 'a') as f:
+                            f.write(output2)
+                    except IOError as e:
+                        logging.error(str(e))
+                        logging.error("Error writing to temp file {f}".format(temp_file))
+
+                try:
+                    with open(current_temp_file, 'w') as f:
+                        for s in self.sensors:
+                            s = "{name}={temp:6.3f}\n".format(name=s.name, temp=s.current_temp)
+                            f.write(s)
+                except IOError as e:
+                    logging.error(str(e))
+                    logging.error("Error writing to temp file {f}".format(current_temp_file))
+
+                time.sleep(2)
+                tnr = self.time_next_recording()
+                q = min(58, tnr - time.time())
+                while q > 0 and not self._stop:
+                    time.sleep(1)
+                    q -= 1
+        finally:
+            logging.critical("temp recorder task stopped")
+            self._stopped = True
+            with open(current_temp_file, 'w') as f:
+                for s in self.sensors:
+                    s = "{name}=STOPPED\n".format(name=s.name)
+                    f.write(s)
+            print "Temp Recording stopped"
 
 
     # def load(self, filename):
@@ -122,66 +220,7 @@ class TankLog(object):
             print "Stopping Temp Recording.."
             self._stop = True
 
-    def time_next_recording(self):
-        now = datetime.datetime.now()
-        secs_since_hour = (now.minute * 60) + now.second
-        i = 0
-        while i < secs_since_hour:
-            i += self.interval
-        r = time.time() + i - secs_since_hour
-        return r
 
-    def task(self):
-        tnr = self.time_next_recording()
-        logging.info("temp recorder task starting")
-        self._stopped = False
-        try:
-            while not self._stop:
-                temps = self.read_all()
-                if tnr < time.time():
-                    now = datetime.datetime.now()
-                    temps_output = []
-                    for t in temps:
-                        temps_output.append("{temp:6.3f}".format(temp=t))
-
-                    date = "{a},{b},{c},{d},{e}". \
-                        format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
-
-                    output2 = "{date:s},{temps:s}\n". \
-                        format(date=date, temps=','.join(temps_output))
-
-                    try:
-                        # output2 = u"[new Date({date:s}),{temp1:2.3f},{temp2:2.3f}],\n".\
-                        #     format(date=date, temp1=self.room_temp, temp2=self.tank_temp)
-                        with open(temp_file, 'a') as f:
-                            f.write(output2)
-                    except IOError as e:
-                        logging.error(str(e))
-                        logging.error("Error writing to temp file {f}".format(temp_file))
-
-                try:
-                    with open(current_temp_file, 'w') as f:
-                        for s in self.sensors:
-                            s = "{name}={temp:6.3f}\n".format(name=s.name, temp=s.current_temp)
-                            f.write(s)
-                except IOError as e:
-                    logging.error(str(e))
-                    logging.error("Error writing to temp file {f}".format(current_temp_file))
-
-                time.sleep(2)
-                tnr = self.time_next_recording()
-                q = min(58, tnr - time.time())
-                while q > 0 and not self._stop:
-                    time.sleep(1)
-                    q -= 1
-        finally:
-            logging.critical("temp recorder task stopped")
-            self._stopped = True
-            with open(current_temp_file, 'w') as f:
-                for s in self.sensors:
-                    s = "{name}=STOPPED\n".format(name=s.name)
-                    f.write(s)
-            print "Temp Recording stopped"
 
 
 class GetTempLog(object):

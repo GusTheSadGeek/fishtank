@@ -315,8 +315,9 @@ def log():
 if __name__ == "__main__":
     try:
         cfg = tank_cfg.Config()
-        for r in cfg.relays:
-            conf.append(r)
+        for r in cfg.items:
+            if r[tank_cfg.ITEM_TYPE] == tank_cfg.RELAY_TYPE:
+                conf.append(r)
 
         # for l in lines:
         #     l = l.strip()

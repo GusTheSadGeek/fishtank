@@ -7,6 +7,7 @@ import os
 import logging
 import tank_temp as temperature
 import tank_cfg
+import tank_log
 
 comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
@@ -270,7 +271,7 @@ class Relay(object):
         self.pin = cfg[tank_cfg.ITEM_NAME]
         self.controlledby = cfg[tank_cfg.ITEM_CONTROLLEDBY]
         self.controller = None
-
+        self._logger = tank_log.TankLog()
         self.on_temp = cfg[tank_cfg.ITEM_ONVAL]
         self.off_temp = cfg[tank_cfg.ITEM_OFFVAL]
 
@@ -297,6 +298,7 @@ class Relay(object):
             self.set_state(True)
         if new_state == -1:
             self.set_state(False)
+        self._logger.log_value(self.id, "{temp:6.3f}".format(temp=self.current_state))
 
     def turn_relay_on(self):
         if self.current_state != RelayState.ON:
