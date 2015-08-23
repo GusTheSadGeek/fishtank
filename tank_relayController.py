@@ -51,119 +51,119 @@ def output(a, b):
         GPIO.output(a, b)
 
 
-class Controller(object):
-    def __init__(self):
-        self._cfg = tank_cfg.Config()
-        self.relays = Relays()
-        tank_cfg.Instances().relays = self.relays
-
-        self.timers = []
-        tank_cfg.Instances().timers = self.timers
-
-        self._stop = False
-
-    def init_timers(self):
-        cfg = tank_cfg.Config()
-        for t in cfg.timers:
-            filename = (t['name']+'.sched').replace(' ', '_')
-            self.timers.append( timer.Timer(t, timer.Schedule(filename)) )
-        #
-        # for n in range(self.relays.count):
-        #     filename = "timer{n}.sched".format(n=n)
-        #     self.timers.append(timer.Timer2(timer.Schedule2(filename), self.relays.get_relay(n)))
-
-        # for t in self.timers:
-        #     t.start()
-
-        thread = threading.Thread(target=self.task)
-        thread.start()
-
-    @property
-    def running(self):
-        for t in self.timers:
-            if not t.running:
-                return False
-        return not self._stop
-
-    def task(self):
-        count = 0
-        while not self._stop:
-            for _ in range(5):
-                if not self._stop:
-                    time.sleep(1)
-
-            for r in self.relays.relays:
-                r.tick()
-
-            count += 1
-            if count > 12:
-                count = 0
-                for r in self.relays.relays:
-                    if r.controlledby_temp:
-                        temp = temperature.get_current_temp(r.controller)
-                        logging.info("{r} {t} {temp}".format(r=r.id, t=r.controller, temp=temp))
-                        if temp > r.on_temp:
-                            r.turn_relay_on()
-                        if temp < r.off_temp:
-                            r.turn_relay_off()
-
-            if not self._stop:
-                if os.path.exists(comms_file):
-                    with open(comms_file, 'r') as f:
-                        data = f.read().split('\n')
-                    os.remove(comms_file)
-                    fields = data[0].split(' ')
-                    if 'togglerelay' in fields[0]:
-                        relay = fields[1]
-                        self._toggle(relay)
-                    if 'setsched' in fields[0]:
-                        relay = fields[1]
-                        self._set_sched(relay,
-                                        fields[2],
-                                        fields[3],
-                                        fields[4],
-                                        fields[5],
-                                        fields[6],
-                                        fields[7],
-                                        fields[8])
-
-            if not self._stop:
-                with open(status_file, 'w') as f:
-                    for relay in self.relays.relays:
-                        r, t, o = relay.state()
-                        f.write("{n} {r} {t} {o}\n".format(n=relay.id, r=states[r], t=states[t], o=states[o]))
-                # r, t, o = self._get_relay_state(1)
-                # status1 = "relay1 {r} {t} {o}\n".format(r=states[r], t=states[t], o=states[o])
-
-        logging.warn("Relay controller stopped")
-        self._stop = True
-
-    def _get_relay_state(self, n):
-        return self.relays.get_relay(n).state()
-
-    def _toggle(self, id):
-        r = self.relays.get_relay(id)
-        actual_state, tstate, ostate = r.state()
-        if actual_state == 1:
-            r.turn_relay_off()
-        else:
-            r.turn_relay_on()
-
-    def _set_sched(self, relay, a, b, c, d, e, f, g):
-        for t in self.timers:
-            if t.controls == relay:
-                t.new_schedule(a, b, c, d, e, f, g)
-
-    def stop(self):
-        if not self._stop:
-            print "Stopping Timers"
-            self._stop = True
-            for t in self.timers:
-                t.stop()
-            print "Timers stopped"
-            self.relays.cleanup()
-            print "Cleaning up Relays"
-
+# class Controller(object):
+#     def __init__(self):
+#         self._cfg = tank_cfg.Config()
+#         self.relays = Relays()
+#         tank_cfg.Instances().relays = self.relays
+#
+#         self.timers = []
+#         tank_cfg.Instances().timers = self.timers
+#
+#         self._stop = False
+#
+#     def init_timers(self):
+#         cfg = tank_cfg.Config()
+#         for t in cfg.timers:
+#             filename = (t['name']+'.sched').replace(' ', '_')
+#             self.timers.append( timer.Timer(t, timer.Schedule(filename)) )
+#         #
+#         # for n in range(self.relays.count):
+#         #     filename = "timer{n}.sched".format(n=n)
+#         #     self.timers.append(timer.Timer2(timer.Schedule2(filename), self.relays.get_relay(n)))
+#
+#         # for t in self.timers:
+#         #     t.start()
+#
+#         thread = threading.Thread(target=self.task)
+#         thread.start()
+#
+#     @property
+#     def running(self):
+#         for t in self.timers:
+#             if not t.running:
+#                 return False
+#         return not self._stop
+#
+#     def task(self):
+#         count = 0
+#         while not self._stop:
+#             for _ in range(5):
+#                 if not self._stop:
+#                     time.sleep(1)
+#
+#             for r in self.relays.relays:
+#                 r.tick()
+#
+#             count += 1
+#             if count > 12:
+#                 count = 0
+#                 for r in self.relays.relays:
+#                     if r.controlledby_temp:
+#                         temp = temperature.get_current_temp(r.controller)
+#                         logging.info("{r} {t} {temp}".format(r=r.id, t=r.controller, temp=temp))
+#                         if temp > r.on_temp:
+#                             r.turn_relay_on()
+#                         if temp < r.off_temp:
+#                             r.turn_relay_off()
+#
+#             if not self._stop:
+#                 if os.path.exists(comms_file):
+#                     with open(comms_file, 'r') as f:
+#                         data = f.read().split('\n')
+#                     os.remove(comms_file)
+#                     fields = data[0].split(' ')
+#                     if 'togglerelay' in fields[0]:
+#                         relay = fields[1]
+#                         self._toggle(relay)
+#                     if 'setsched' in fields[0]:
+#                         relay = fields[1]
+#                         self._set_sched(relay,
+#                                         fields[2],
+#                                         fields[3],
+#                                         fields[4],
+#                                         fields[5],
+#                                         fields[6],
+#                                         fields[7],
+#                                         fields[8])
+#
+#             if not self._stop:
+#                 with open(status_file, 'w') as f:
+#                     for relay in self.relays.relays:
+#                         r, t, o = relay.state()
+#                         f.write("{n} {r} {t} {o}\n".format(n=relay.id, r=states[r], t=states[t], o=states[o]))
+#                 # r, t, o = self._get_relay_state(1)
+#                 # status1 = "relay1 {r} {t} {o}\n".format(r=states[r], t=states[t], o=states[o])
+#
+#         logging.warn("Relay controller stopped")
+#         self._stop = True
+#
+#     def _get_relay_state(self, n):
+#         return self.relays.get_relay(n).state()
+#
+#     def _toggle(self, id):
+#         r = self.relays.get_relay(id)
+#         actual_state, tstate, ostate = r.state()
+#         if actual_state == 1:
+#             r.turn_relay_off()
+#         else:
+#             r.turn_relay_on()
+#
+#     def _set_sched(self, relay, a, b, c, d, e, f, g):
+#         for t in self.timers:
+#             if t.controls == relay:
+#                 t.new_schedule(a, b, c, d, e, f, g)
+#
+#     def stop(self):
+#         if not self._stop:
+#             print "Stopping Timers"
+#             self._stop = True
+#             for t in self.timers:
+#                 t.stop()
+#             print "Timers stopped"
+#             self.relays.cleanup()
+#             print "Cleaning up Relays"
+#
 
 def toggle_relay(id):
     while os.path.exists(comms_file):
@@ -205,44 +205,44 @@ def get_relay_state_str(id):
     return "Actual:"+actual+"   Timer:"+timerr+"   Override:"+override
 
 
-class Relays(object):
-    def __init__(self):
-        cfg = tank_cfg.Config()
-
-        setmode(GBOARD)
-        self._relays = []
-
-        for r in cfg._relays:
-            self._relays.append(Relay(r))
-
-    @property
-    def count(self):
-        return len(self._relays)
-
-    @property
-    def relays(self):
-        return self._relays
-
-    # @staticmethod
-    # def load_pins():
-    #     with open(pin_file) as f:
-    #         pins = f.read().strip().split('\n')
-    #     return map(int, pins)
-
-    # def get_relay(self, n):
-    #     if len(self._relays) > n:
-    #         return self._relays[n]
-    #     return None
-
-    def get_relay(self, id):
-        for r in self._relays:
-            if r.id == id:
-                return r
-        return None
-
-    @classmethod
-    def cleanup(cls):
-        cleanup()
+# class Relays(object):
+#     def __init__(self):
+#         cfg = tank_cfg.Config()
+#
+#         setmode(GBOARD)
+#         self._relays = []
+#
+#         for r in cfg._relays:
+#             self._relays.append(Relay(r))
+#
+#     @property
+#     def count(self):
+#         return len(self._relays)
+#
+#     @property
+#     def relays(self):
+#         return self._relays
+#
+#     # @staticmethod
+#     # def load_pins():
+#     #     with open(pin_file) as f:
+#     #         pins = f.read().strip().split('\n')
+#     #     return map(int, pins)
+#
+#     # def get_relay(self, n):
+#     #     if len(self._relays) > n:
+#     #         return self._relays[n]
+#     #     return None
+#
+#     def get_relay(self, id):
+#         for r in self._relays:
+#             if r.id == id:
+#                 return r
+#         return None
+#
+#     @classmethod
+#     def cleanup(cls):
+#         cleanup()
 
 
 class RelayState:
@@ -274,6 +274,10 @@ class Relay(object):
         self._logger = tank_log.TankLog()
         self.on_temp = cfg[tank_cfg.ITEM_ONVAL]
         self.off_temp = cfg[tank_cfg.ITEM_OFFVAL]
+#        self.old_log_stamp = time.time()
+        self.avg = []
+        self.moving_total = 0.0
+
 
         # if 'none' not in self.controller:
         #     for t in tank_cfg.Instances().temps:
@@ -298,7 +302,20 @@ class Relay(object):
             self.set_state(True)
         if new_state == -1:
             self.set_state(False)
-        self._logger.log_value(self.id, "{temp:6.3f}".format(temp=self.current_state))
+        if self.current_state == RelayState.ON or self.current_state == RelayState.FON:
+            new_val = 5
+        else:
+            new_val = 0
+        self.avg.append(new_val)
+        if len(self.avg) > 720:
+            old_val = self.avg.pop(0)
+            self.moving_total -= old_val
+        self.moving_total += new_val
+
+        avg = (self.moving_total / 3600) * 100
+
+        self._logger.log_value(self.id, "{temp:4.1f}".format(temp=avg))
+
 
     def turn_relay_on(self):
         if self.current_state != RelayState.ON:

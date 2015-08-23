@@ -56,6 +56,11 @@ class Config(object):
             # self._distances = []
             # self._timers = []
             self._temp_interval = 60
+            self._graph_items = None
+            self._graph_types = None
+            self._relay_items = None
+            self._timer_items = None
+            self._temp_items = None
             self.load_config()
 
             self.parse_config()
@@ -67,6 +72,51 @@ class Config(object):
     @property
     def items(self):
         return self._items
+
+    @property
+    def graphs_items(self):
+        if self._graph_items is None:
+            self._graph_items = []
+            for i in self._items:
+                if i[ITEM_GRAPH] is not None:
+                    self._graph_items.append(i)
+        return self._graph_items
+
+    @property
+    def graphs_types(self):
+        if self._graph_types is None:
+            self._graph_types = []
+            for i in self._items:
+                g = i[ITEM_GRAPH]
+                if g is not None:
+                    if g not in self._graph_types:
+                        self._graph_types.append(g)
+        return self._graph_types
+
+    @property
+    def relay_items(self):
+        if self._relay_items is None:
+            self._relay_items = self.get_items(RELAY_TYPE)
+        return self._relay_items
+
+    @property
+    def timer_items(self):
+        if self._timer_items is None:
+            self._timer_items = self.get_items(TIMER_TYPE)
+        return self._timer_items
+
+    @property
+    def temp_items(self):
+        if self._temp_items is None:
+            self._temp_items = self.get_items(TEMP_TYPE)
+        return self._temp_items
+
+    def get_items(self, t):
+        items = []
+        for i in self._items:
+            if i[ITEM_TYPE] == t:
+                items.append(i)
+        return items
 
     # @property
     # def relays(self):
@@ -122,6 +172,7 @@ class Config(object):
 
     def setup_item(self, section):
         item_type = UNKNOWN_TYPE
+        item_object = None
         item = {
             ITEM_NAME: self._config.get(section, 'name')
         }
@@ -211,7 +262,7 @@ class Config(object):
 
 def main():
     cfg = Config()
-    # print cfg.relays
+    print cfg
     # print cfg.timers
     # print cfg.temps
 

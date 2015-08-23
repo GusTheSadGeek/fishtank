@@ -44,6 +44,7 @@ class TankLog(object):
             self.interval = 120
             self.cols = {}
             self.tnr = self.time_next_recording()
+            self.tnr = time.time()+10
 
     def init(self):
         for item in tank_cfg.Config().items:
@@ -65,7 +66,7 @@ class TankLog(object):
 
         now = time.time()
         diff = self.tnr - now
-        logging.info("{n} {tnr} {diff}".format(n=now,tnr=self.tnr,diff=diff))
+#        logging.debug("{n} {tnr} {diff}".format(n=now,tnr=self.tnr,diff=diff))
         if self.tnr < time.time():
             logging.info("logging")
             now = datetime.datetime.now()

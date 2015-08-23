@@ -276,7 +276,7 @@ class GetTempLog(object):
         self.min_temp = 999.00
         self.max_temp = -999.00
 
-    def update_min_max_temps(self, temp):
+    def update_min_max_values(self, temp):
         if temp > self.max_temp:
             self.max_temp = temp
         if temp < self.min_temp:
@@ -304,7 +304,7 @@ class GetTempLog(object):
     def last_changed(cls):
         return os.path.getmtime(temp_file)
 
-    def get_log(self, days):
+    def get_log(self, days, graph_type):
         # if mydebug.TEMP_TEST == 0:
         file_name = temp_file
         # else:
@@ -316,6 +316,16 @@ class GetTempLog(object):
         except IOError:
             log = "error"
 
+        cfg = tank_cfg.Config()
+        # Which log cols do we want ?
+        log_cols = []
+        sensors = []
+        for gi in cfg.graphs_items:
+            if gi[tank_cfg.ITEM_GRAPH] == graph_type:
+                log_cols.append(int(gi[tank_cfg.ITEM_LOGCOL]))
+                sensors.append(gi[tank_cfg.ITEM_NAME])
+
+        ret_lines = []
         index = 0
         day_count = 0
         last_day = None
@@ -324,14 +334,19 @@ class GetTempLog(object):
                 line = log[index].strip(',')
                 if len(line) > 5:
                     fields = line.split(',')
-                    temps = fields[5:]
-                    for t in temps:
-                        self.update_min_max_temps(float(t))
+                    retline = fields[:5]
+                    values = fields[5:]
+                    # for t in values:
+                    #     self.update_min_max_values(float(t))
                     day = fields[2]
                     if day != last_day:
                         if last_day is not None:
                             day_count += 1
                         last_day = day
+                    for lc in log_cols:
+                        self.update_min_max_values(float(fields[lc+4]))
+                        retline.append(fields[lc+4])
+                    ret_lines.append(','.join(retline))
             except IndexError:
                 logging.error("Index error in log file {line}".format(line=log[index]))
             except ValueError:
@@ -340,9 +355,9 @@ class GetTempLog(object):
             if day_count >= days:
                 break
 
-        ret_lines = log[(index+1):]
+#        ret_lines = log[(index+1):]
 
-        return ret_lines
+        return ret_lines, sensors
 
 
 def get_current_temps():
@@ -382,14 +397,15 @@ def log_last_changed():
     return gtl.last_changed()
 
 
-def get_temp_log(days):
+def get_temp_log(days, graph_type):
     gtl = GetTempLog()
-    log = gtl.get_log(days)
 
-    sensor_names = []
-    temps = GetTempLog().get_current()
-    for name, __ in temps.iteritems():
-        sensor_names.append(name)
+    log, sensor_names = gtl.get_log(days, graph_type)
+
+    # sensor_names = []
+    # temps = GetTempLog().get_current()
+    # for name, __ in temps.iteritems():
+    #     sensor_names.append(name)
 
     return log, int(gtl.min_temp), int(gtl.max_temp+0.95), sensor_names
 

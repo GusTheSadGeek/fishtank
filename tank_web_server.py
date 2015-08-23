@@ -1,12 +1,13 @@
 #!/usr/bin/python
 
+import os
 import tank_temp as temperature
 import datetime
 import tank_relayController
 import mydebug
 from flask import Flask, send_file, Response, request
 import tank_cfg
-# import sys
+import traceback
 
 app = Flask(__name__)
 
@@ -30,17 +31,19 @@ class LogStuff(object):
             self._last_changed = 0
             self._log = {}
 
-    def get_temp_log(self, days):
+    def get_temp_log(self, days, graph_type):
+
         last_changed = temperature.log_last_changed()
-        if (last_changed != self._last_changed) or (days not in self._log):
+#        if (last_changed != self._last_changed) or (days not in self._log):
+        if True:
             self._last_changed = last_changed
 
-            logdata, mn, mx, sensor_names = temperature.get_temp_log(days)
+            logdata, mn, mx, sensor_names = temperature.get_temp_log(days, graph_type)
             new_log = []
             for e in logdata:
                 fields = e.split(',')
                 if len(fields) > 6:
-                    new_log.append("[new Date({a}),{b}]".format(a=','.join(fields[0:5]), b=','.join(fields[5:7])))
+                    new_log.append("[new Date({a}),{b}]".format(a=','.join(fields[0:5]), b=','.join(fields[5:])))
             self._log[days] = ','.join(new_log), mn, mx, sensor_names
             return self._log[days]
         else:
@@ -53,8 +56,9 @@ def gettimestamp():
     return output
 
 
-def graph(days=30):
-    b, mn, mx, sensor_names = LogStuff().get_temp_log(days)
+def graph(days=30, graph_type='temps'):
+    chart_name = 'linechart_'+graph_type
+    b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graph_type)
 
     a = [
         """<script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -100,7 +104,7 @@ def graph(days=30):
         width: 1000,
         height: 500
       };
-      var chart = new google.visualization.LineChart(document.getElementById('linechart_material'));
+      var chart = new google.visualization.LineChart(document.getElementById('"""+chart_name+"""'));
       chart.draw(data, options);
     }
     </script>
@@ -113,7 +117,9 @@ def main_page(ctrl=False):
     line += '<a href="{cp}?d=30"> Month </a><br>'.format(cp=current_path)
     line += '<a href="{cp}?d=7"> Week </a><br>'.format(cp=current_path)
     line += '<a href="{cp}?d=1"> Day </a><br>'.format(cp=current_path)
-    line += '<br><div id="linechart_material"></div>'
+    for chart in cfg.graphs_types:
+        name = "linechart_{chart}".format(chart=chart)
+        line += '<br><div id="{name}"></div>'.format(name=name)
     line += gettimestamp() + "<br><br>"
     line += temperature.get_current_temps_formatted()+"<br><br>"
     for relay in conf:
@@ -143,21 +149,35 @@ def main_page(ctrl=False):
 
 
 def view(ctrl=False):
-    global prev_count
     try:
-        day_count = int(request.args.get('d'))
-    except (ValueError, TypeError):
-        day_count = None
-    if day_count is None:
-        if prev_count is not None:
-            day_count = prev_count
-        else:
-            day_count = 30
-    prev_count = day_count
+        global prev_count
+        try:
+            day_count = int(request.args.get('d'))
+        except (ValueError, TypeError):
+            day_count = None
+        if day_count is None:
+            if prev_count is not None:
+                day_count = prev_count
+            else:
+                day_count = 30
+        prev_count = day_count
 
-    line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url={cp}" />\n{graph}</head>\n<body>\n'.\
-        format(cp=current_path, graph = graph(day_count))
-    line += main_page(ctrl)
+        charts = []
+        for gt in cfg.graphs_types:
+            q = graph(day_count, gt)
+            charts.append(q)
+
+
+            #
+            # for gt cfg.graphs_items:
+            #     if gt[tank_cfg.ITEM_GRAPH] == gt:
+
+        line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url={cp}" />\n{graph}</head>\n<body>\n'.\
+            format(cp=current_path, graph=' '.join(charts))
+        line += main_page(ctrl)
+    except Exception as e:
+        print e
+        print traceback.format_exc()
     return line
 
 
@@ -313,11 +333,20 @@ def log():
 # controller.init_timers()
 
 if __name__ == "__main__":
-    try:
+#    try:
         cfg = tank_cfg.Config()
-        for r in cfg.items:
-            if r[tank_cfg.ITEM_TYPE] == tank_cfg.RELAY_TYPE:
-                conf.append(r)
+
+        graphs = cfg.graphs_types
+        graphed = cfg.graphs_items
+        #
+        # for r in cfg.items:
+        #     if r[tank_cfg.ITEM_TYPE] == tank_cfg.TIMER_TYPE:
+        #         conf.append(r)
+        #
+        # for r in cfg.items:
+        #     if r[tank_cfg.ITEM_TYPE] == tank_cfg.TIMER_TYPE:
+        #         conf.append(r)
+
 
         # for l in lines:
         #     l = l.strip()
@@ -329,7 +358,7 @@ if __name__ == "__main__":
             app.run(host='0.0.0.0', port=5000)
         else:
             app.run(host='0.0.0.0', port=5001)
-    except IOError:
-        print "Could not read 'main.conf' config file"
+    # except IOError:
+    #     print "Could not read 'main.conf' config file"
 
     # controller.stop()
