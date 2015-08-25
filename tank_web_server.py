@@ -2,12 +2,15 @@
 
 import os
 #import tank_temp as temperature
+
 import datetime
+from flask import Flask, send_file, Response, request
+import traceback
+
+import tank
 import tank_relayController
 import tank_debug
-from flask import Flask, send_file, Response, request
 import tank_cfg
-import traceback
 import tank_log
 
 app = Flask(__name__)
@@ -136,7 +139,7 @@ def main_page(ctrl=False):
                 format(cp=current_path, n=relay['name'], r=relay['name'])
         line += '<br><br>'
         for relay in cfg.timer_items:
-            q = tank_relayController.get_relay_query(relay['name'])
+            q = tank.get_relay_query(relay['name'])
             line += '<a href="{cp}/setr{q}">Set {r} Timings</a></br>'.\
                 format(cp=current_path, q=q, r=relay['name'])
     line += '</br>'
@@ -287,7 +290,7 @@ def setrelay():
 def toggle_relay():
     relay_name = request.args.get('r')
     print relay_name
-    tank_relayController.toggle_relay(relay_name)
+    tank.toggle_relay(relay_name)
     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
@@ -329,7 +332,7 @@ def temp():
 
 @app.route("/LOG")
 def log():
-    text, __, __, __ = temperature.get_temp_log(9999)
+    text, __, __, __ = tank_log.get_temp_log(9999)
     return Response('<br>'.join(text), mimetype="text/html")
 
 

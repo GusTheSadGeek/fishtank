@@ -30,7 +30,7 @@ import time
 # import tank_temp
 import tank_cfg
 import tank_log
-
+import timer
 import datetime
 
 
@@ -52,6 +52,49 @@ def setup_log():
 
 
 comms_file = "/mnt/ram/relay_control.txt"
+status_file = "/mnt/ram/relay_status.txt"
+
+def toggle_relay(id):
+    while os.path.exists(comms_file):
+        time.sleep(1)
+
+    with open(comms_file, 'w') as f:
+        f.write("togglerelay {id} \n".format(id=id))
+
+
+def set_schedule(n, mon, tue, wed, thu, fri, sat, sun):
+    with open(comms_file, 'w') as f:
+        f.write("setsched {n} {m} {t} {w} {th} {f} {sa} {su} \n".
+                format(n=n, m=mon, t=tue, w=wed, th=thu, f=fri, sa=sat, su=sun))
+
+
+def get_relay_query(id):
+    filename = ("{id}.sched".format(id=id)).replace(' ', '_')
+    return "?r={id}&".format(id=id)+timer.get_query(filename)
+
+
+def get_relay_state_str(id):
+    try:
+        with open(status_file, 'r') as f:
+            lines = f.read().split('\n')
+
+        actual = '?'
+        timerr = '?'
+        override = '?'
+        for l in lines:
+            if l.startswith(id):
+                fields = l.split(' ')
+                actual = fields[1]
+                timerr = fields[2]
+                override = fields[3]
+    except IOError:
+        actual = '?e'
+        timerr = '?e'
+        override = '?e'
+    return "Actual:"+actual+"   Timer:"+timerr+"   Override:"+override
+
+
+
 def check_comms():
     if os.path.exists(comms_file):
         with open(comms_file, 'r') as f:
