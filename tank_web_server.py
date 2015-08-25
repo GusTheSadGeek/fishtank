@@ -1,13 +1,14 @@
 #!/usr/bin/python
 
 import os
-import tank_temp as temperature
+#import tank_temp as temperature
 import datetime
 import tank_relayController
-import mydebug
+import tank_debug
 from flask import Flask, send_file, Response, request
 import tank_cfg
 import traceback
+import tank_log
 
 app = Flask(__name__)
 
@@ -32,22 +33,25 @@ class LogStuff(object):
             self._log = {}
 
     def get_temp_log(self, days, graph_type):
+        key = graph_type+str(days)
 
-        last_changed = temperature.log_last_changed()
-#        if (last_changed != self._last_changed) or (days not in self._log):
-        if True:
+
+        last_changed = tank_log.log_last_changed()
+        if (last_changed != self._last_changed) or (key not in self._log):
+#        if True:
             self._last_changed = last_changed
 
-            logdata, mn, mx, sensor_names = temperature.get_temp_log(days, graph_type)
+            logdata, mn, mx, sensor_names = tank_log.get_temp_log(days, graph_type)
+#            temperature.get_temp_log(days, graph_type)
             new_log = []
             for e in logdata:
                 fields = e.split(',')
-                if len(fields) > 6:
+                if len(fields) > 5:
                     new_log.append("[new Date({a}),{b}]".format(a=','.join(fields[0:5]), b=','.join(fields[5:])))
-            self._log[days] = ','.join(new_log), mn, mx, sensor_names
-            return self._log[days]
+            self._log[key] = ','.join(new_log), mn, mx, sensor_names
+            return self._log[key]
         else:
-            return self._log[days]
+            return self._log[key]
 
 
 def gettimestamp():
@@ -56,9 +60,9 @@ def gettimestamp():
     return output
 
 
-def graph(days=30, graph_type='temps'):
-    chart_name = 'linechart_'+graph_type
-    b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graph_type)
+def graph(days, graph):
+    chart_name = 'linechart_'+graph['name']
+    b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graph['name'])
 
     a = [
         """<script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -85,6 +89,8 @@ def graph(days=30, graph_type='temps'):
         a.append("data.addColumn('number', '{name}');".format(name=name))
     a.append("data.addRows([")
 
+    scale = int(graph['scale'])
+
     c1 = """
       ]);
       var options = {
@@ -99,10 +105,10 @@ def graph(days=30, graph_type='temps'):
               min: """ + str(mn) + """,
               max: """ + str(mx) + """
             },
-          ticks: [""" + ','.join(map(str, range(mn, mx+1))) + """]
+          ticks: [""" + ','.join(map(str, range(mn, mx+1, scale))) + """]
         },
         width: 1000,
-        height: 500
+        height: """+graph['height']+"""
       };
       var chart = new google.visualization.LineChart(document.getElementById('"""+chart_name+"""'));
       chart.draw(data, options);
@@ -111,7 +117,6 @@ def graph(days=30, graph_type='temps'):
     """
     return '\n'.join(a) + b + c1
 
-
 def main_page(ctrl=False):
     line = '<a href="{cp}?d=9999"> All </a><br>'.format(cp=current_path)
     line += '<a href="{cp}?d=30"> Month </a><br>'.format(cp=current_path)
@@ -119,18 +124,18 @@ def main_page(ctrl=False):
     line += '<a href="{cp}?d=1"> Day </a><br>'.format(cp=current_path)
     for chart in cfg.graphs_types:
         name = "linechart_{chart}".format(chart=chart)
-        line += '<br><div id="{name}"></div>'.format(name=name)
+        line += '<br><div id="{name}" style=" width:1000px;"></div>'.format(name=name)
     line += gettimestamp() + "<br><br>"
-    line += temperature.get_current_temps_formatted()+"<br><br>"
+    line += tank_log.get_current_temps_formatted()+"<br><br>"
     for relay in conf:
         line += relay['name'] + ' ' + tank_relayController.get_relay_state_str(relay['name']) + "<br>"
     line += '<br><br>'
     if ctrl:
-        for relay in conf:
+        for relay in cfg.relay_items:
             line += '<a href="{cp}/TR?r={n}">Toggle {r}</a></br>'.\
                 format(cp=current_path, n=relay['name'], r=relay['name'])
         line += '<br><br>'
-        for relay in conf:
+        for relay in cfg.timer_items:
             q = tank_relayController.get_relay_query(relay['name'])
             line += '<a href="{cp}/setr{q}">Set {r} Timings</a></br>'.\
                 format(cp=current_path, q=q, r=relay['name'])
@@ -163,10 +168,9 @@ def view(ctrl=False):
         prev_count = day_count
 
         charts = []
-        for gt in cfg.graphs_types:
-            q = graph(day_count, gt)
+        for g in cfg.graph_items:
+            q = graph(day_count, g)
             charts.append(q)
-
 
             #
             # for gt cfg.graphs_items:
@@ -337,7 +341,7 @@ if __name__ == "__main__":
         cfg = tank_cfg.Config()
 
         graphs = cfg.graphs_types
-        graphed = cfg.graphs_items
+        graphed = cfg.graphed_items
         #
         # for r in cfg.items:
         #     if r[tank_cfg.ITEM_TYPE] == tank_cfg.TIMER_TYPE:
@@ -354,7 +358,7 @@ if __name__ == "__main__":
         #         f = l.split(' ')
         #         conf[f[0]] = ' '.join(f[1:])
 
-        if mydebug.TEST == 0:
+        if tank_debug.TEST == 0:
             app.run(host='0.0.0.0', port=5000)
         else:
             app.run(host='0.0.0.0', port=5001)

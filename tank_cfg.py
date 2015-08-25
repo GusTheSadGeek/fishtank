@@ -2,16 +2,22 @@ import ConfigParser
 import tank_relayController
 import timer
 import tank_temp
+import graph
+import tank_dist
 
 RELAY_TYPE = 0
 TIMER_TYPE = 1
 TEMP_TYPE = 2
 DIST_TYPE = 3
+GRAPH_TYPE = 4
 UNKNOWN_TYPE = 99
 
 ITEM_NAME = 'name'
 ITEM_TYPE = 'type'
 ITEM_PIN = 'pin'
+ITEM_TRIGPIN = 'trig_pin'
+ITEM_ECHOPIN = 'echo_pin'
+ITEM_TANKDEPTH = 'tank_depth'
 ITEM_ONVAL = 'onvalue'
 ITEM_OFFVAL = 'offvalue'
 ITEM_CONTROLLEDBY = 'controlledby'
@@ -19,6 +25,8 @@ ITEM_CONTROLS = 'controls'
 ITEM_SENSOR = 'sensor'
 ITEM_GRAPH = 'graph'
 ITEM_LOGCOL = 'logcol'
+ITEM_HEIGHT = 'height'
+ITEM_SCALE = 'scale'
 ITEM_OBJECT = 'object'
 
 
@@ -74,7 +82,7 @@ class Config(object):
         return self._items
 
     @property
-    def graphs_items(self):
+    def graphed_items(self):
         if self._graph_items is None:
             self._graph_items = []
             for i in self._items:
@@ -110,6 +118,13 @@ class Config(object):
         if self._temp_items is None:
             self._temp_items = self.get_items(TEMP_TYPE)
         return self._temp_items
+
+    @property
+    def graph_items(self):
+        if self._temp_items is None:
+            self._temp_items = self.get_items(GRAPH_TYPE)
+        return self._temp_items
+
 
     def get_items(self, t):
         items = []
@@ -178,13 +193,20 @@ class Config(object):
         }
 
         self.add_val_int(item, section, ITEM_PIN)
+        self.add_val_int(item, section, ITEM_TRIGPIN)
+        self.add_val_int(item, section, ITEM_ECHOPIN)
+        self.add_val_int(item, section, ITEM_TANKDEPTH)
+
         self.add_val_float(item, section, ITEM_ONVAL)
         self.add_val_float(item, section, ITEM_OFFVAL)
+
         self.add_val(item, section, ITEM_CONTROLLEDBY)
         self.add_val(item, section, ITEM_CONTROLS)
         self.add_val(item, section, ITEM_SENSOR)
         self.add_val(item, section, ITEM_GRAPH)
         self.add_val(item, section, ITEM_LOGCOL)
+        self.add_val(item, section, ITEM_HEIGHT)
+        self.add_val(item, section, ITEM_SCALE)
 
         if section.startswith('relay'):
             item_type = RELAY_TYPE
@@ -195,9 +217,12 @@ class Config(object):
         if section.startswith('timer'):
             item_type = TIMER_TYPE
             item_object = timer.Timer(item)
-        # if section.startswith('dist'):
-        #     item_type = DIST_TYPE
-        #     item_object = tank_relayController.Relay(item)
+        if section.startswith('dist'):
+            item_type = DIST_TYPE
+            item_object = tank_dist.DistSensor(item)
+        if section.startswith('graph'):
+            item_type = GRAPH_TYPE
+            item_object = graph.Graph(item)
 
         item[ITEM_TYPE] = item_type
         if item_object is not None:

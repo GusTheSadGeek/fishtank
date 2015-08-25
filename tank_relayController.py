@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import mydebug
+import tank_debug
 import threading
 import time
 import os
@@ -13,7 +13,7 @@ comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
 pin_file = "relay_pins.conf"
 
-if mydebug.RELAY_TEST == 0:
+if tank_debug.RELAY_TEST == 0:
     import RPi.GPIO as GPIO
     GOUT = GPIO.OUT
     GLOW = GPIO.LOW
@@ -32,22 +32,22 @@ states = ['OFF', 'ON']
 
 
 def setmode(n):
-    if mydebug.RELAY_TEST == 0:
+    if tank_debug.RELAY_TEST == 0:
         GPIO.setmode(n)
 
 
 def cleanup():
-    if mydebug.RELAY_TEST == 0:
+    if tank_debug.RELAY_TEST == 0:
         GPIO.cleanup()
 
 
 def setup(a, b):
-    if mydebug.RELAY_TEST == 0:
+    if tank_debug.RELAY_TEST == 0:
         GPIO.setup(a, b)
 
 
 def output(a, b):
-    if mydebug.RELAY_TEST == 0:
+    if tank_debug.RELAY_TEST == 0:
         GPIO.output(a, b)
 
 
@@ -253,7 +253,7 @@ class RelayState:
     UNKNOWN = 4
 
     @classmethod
-    def toString(cls,n):
+    def toString(cls, n):
         if n == cls.OFF:
             return 'OFF'
         if n == cls.ON:
@@ -277,7 +277,7 @@ class Relay(object):
 #        self.old_log_stamp = time.time()
         self.avg = []
         self.moving_total = 0.0
-
+        self.controller_state = 99
 
         # if 'none' not in self.controller:
         #     for t in tank_cfg.Instances().temps:
@@ -312,9 +312,10 @@ class Relay(object):
             self.moving_total -= old_val
         self.moving_total += new_val
 
-        avg = (self.moving_total / 3600) * 100
+        avg = (self.moving_total / (len(self.avg)*5)) * 100
 
-        self._logger.log_value(self.id, "{temp:4.1f}".format(temp=avg))
+        self._logger.log_value(self.id,
+            "{avg:4.1f}".format(avg=avg), "{current}".format(current=RelayState.toString(self.current_state)))
 
 
     def turn_relay_on(self):
@@ -333,13 +334,21 @@ class Relay(object):
         if self.current_state != RelayState.FON:
             logging.info(str(self.id)+" FON")
         output(self.pin, GLOW)
-        self.current_state = RelayState.FON
+        if self.controller_state == 1:
+            self.current_state = RelayState.ON
+            logging.info(str(self.id)+" ON")
+        else:
+            self.current_state = RelayState.FON
 
     def force_relay_off(self):
         if self.current_state != RelayState.FOFF:
             logging.info(str(self.id)+" FOFF")
         output(self.pin, GHIGH)
-        self.current_state = RelayState.FOFF
+        if self.controller_state == 0:
+            self.current_state = RelayState.OFF
+            logging.info(str(self.id)+" OFF")
+        else:
+            self.current_state = RelayState.FOFF
 
     def unforce_relay(self):
         if self.current_state == RelayState.FOFF:
@@ -354,17 +363,26 @@ class Relay(object):
     def set_state(self, new_state):
         # print "{id} {state}".format(id=self.id, state=new_state)
         if new_state:
-            self.controller_state = 1
-            if not self.override:
-                self.turn_relay_on()
+            if self.controller_state != 1:
+                self.controller_state = 1
+                if not self.override:
+                    self.turn_relay_on()
         else:
-            self.controller_state = 0
-            if not self.override:
-                self.turn_relay_off()
+            if self.controller_state != 0:
+                self.controller_state = 0
+                if not self.override:
+                    self.turn_relay_off()
         self.override = (self.current_state != new_state)
 
     def state(self):
         return self.current_state, self.controller_state, self.override
+
+    def toggle(self):
+        if self.current_state == RelayState.ON or self.current_state == RelayState.FON:
+            self.force_relay_off()
+        else:
+            self.force_relay_on()
+        self.tick()
 
 
 def setup_log():
