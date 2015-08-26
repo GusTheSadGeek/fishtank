@@ -1,11 +1,8 @@
 #!/usr/bin/python
 import datetime
-import tank_cfg
 import logging
-
-# import threading
-# import time
-# import relayController
+import tank
+import cfg
 
 
 class Schedule:
@@ -73,19 +70,13 @@ class Schedule:
         return (self.s[day] & bit) > 0
 
 
-class Timer:
-    def __init__(self, cfg):
-
-        self.name = cfg['name']
+class Timer(tank.Ticker):
+    def __init__(self, config):
+        super(Timer, self).__init__()
+        self._name = config[cfg.ITEM_NAME]
         self._current_state = False
-
         filename = (self.name+'.sched').replace(' ', '_')
         self.schedule = Schedule(filename)
-
-#        self.controls = cfg['controls']
-#        self.relay = tank_cfg.Instances().relays.get_relay(self.controls)
-#        self.thread = threading.Thread(target=self.timer_thread)
-#        self._stop = False
 
     def init(self):
         pass
@@ -110,31 +101,11 @@ class Timer:
         return self._current_state
 
     def get_new_relay_state(self, onval=None, offval=None):
+        if onval or offval:
+            pass
         if self._current_state:
             return 1
         return -1
-
-    # def start(self):
-    #     self.thread.start()
-    #
-    # def stop(self):
-    #     self._stop = True
-    #
-    # def timer_thread(self):
-    #     while not self._stop:
-    #         self.tick()
-    #
-    #         q = 0
-    #         while q < 60 and not self._stop:
-    #             time.sleep(1)
-    #             q += 1
-    #
-    #     logging.warn("timer stopping {r}".format(r=self.relay.id))
-    #     self._stop = True
-    #
-    # @property
-    # def running(self):
-    #     return not self._stop
 
 
 def get_query(file_name):

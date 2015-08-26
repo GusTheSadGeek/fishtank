@@ -25,11 +25,11 @@ class Ticker(object):
 
 import logging
 import os
-# import tank_relayController
 import time
-# import tank_temp
-import tank_cfg
-import tank_log
+
+import cfg
+
+import logg
 import timer
 import datetime
 
@@ -100,20 +100,20 @@ def check_comms():
         with open(comms_file, 'r') as f:
             data = f.read().split('\n')
         os.remove(comms_file)
-        cfg = tank_cfg.Config()
+        config = cfg.Config()
 
         fields = data[0].split(' ')
         if 'togglerelay' in fields[0]:
             relay = fields[1]
-            for r in cfg.relay_items:
-                if r[tank_cfg.ITEM_NAME] == relay:
-                    r[tank_cfg.ITEM_OBJECT].toggle()
+            for r in config.relay_items:
+                if r[cfg.ITEM_NAME] == relay:
+                    r[cfg.ITEM_OBJECT].toggle()
 
         if 'setsched' in fields[0]:
             timername = fields[1]
-            for timr in cfg.timer_items:
-                if timr[tank_cfg.ITEM_NAME] == timername:
-                    timr[tank_cfg.ITEM_OBJECT].new_schedule(
+            for timr in config.timer_items:
+                if timr[cfg.ITEM_NAME] == timername:
+                    timr[cfg.ITEM_OBJECT].new_schedule(
                         fields[2],
                         fields[3],
                         fields[4],
@@ -126,20 +126,20 @@ def check_comms():
 def main():
     setup_log()
     logging.info("STARTED")
-    tank_logger = tank_log.TankLog()
+    tank_logger = logg.TankLog()
 
-    cfg = tank_cfg.Config()
+    config = cfg.Config()
 
     tank_logger.init()
-    for item in cfg.items:
-        item[tank_cfg.ITEM_OBJECT].init()
+    for item in config.items:
+        item[cfg.ITEM_OBJECT].init()
 
     print ("TANK Monitor Running....")
     while True:
         time.sleep(5)
         check_comms()
-        for item in cfg.items:
-            item[tank_cfg.ITEM_OBJECT].tick()
+        for item in config.items:
+            item[cfg.ITEM_OBJECT].tick()
         tank_logger.tick()
 
 

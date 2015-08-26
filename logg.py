@@ -1,22 +1,15 @@
 #!/usr/bin/python
 
-import tank_debug
 import os
 import time
 import datetime
 import threading
 
 import logging
-import random
-import tank_cfg
+import cfg
 
 value_log_file = '/var/log/tank/temps.txt'
 current_value_file = '/mnt/ram/current_temps.txt'
-
-# test_temp_file = 'test/temps2.txt'
-#
-# temp_sensor_conf_file = 'temp_sensors.conf'
-
 
 def setup_log():
     default_log_dir = r'/var/log/tank/'
@@ -76,14 +69,14 @@ class GetLog(object):
         except IOError:
             log = "error"
 
-        cfg = tank_cfg.Config()
+        config = cfg.Config()
         # Which log cols do we want ?
         log_cols = []
         sensors = []
-        for gi in cfg.graphed_items:
-            if gi[tank_cfg.ITEM_GRAPH] == graph_type:
-                log_cols.append(int(gi[tank_cfg.ITEM_LOGCOL]))
-                sensors.append(gi[tank_cfg.ITEM_NAME])
+        for gi in config.graphed_items:
+            if gi[cfg.ITEM_GRAPH] == graph_type:
+                log_cols.append(int(gi[cfg.ITEM_LOGCOL]))
+                sensors.append(gi[cfg.ITEM_NAME])
 
         ret_lines = []
         index = 0
@@ -139,9 +132,9 @@ class TankLog(object):
             self.tnr = time.time()+10
 
     def init(self):
-        for item in tank_cfg.Config().items:
-            if item[tank_cfg.ITEM_LOGCOL] is not None:
-                self.cols[item[tank_cfg.ITEM_LOGCOL]] = item[tank_cfg.ITEM_NAME]
+        for item in cfg.Config().items:
+            if item[cfg.ITEM_LOGCOL] is not None:
+                self.cols[item[cfg.ITEM_LOGCOL]] = item[cfg.ITEM_NAME]
 
     def log_value(self, key, logvalue, current=None):
         if current is None:
@@ -413,14 +406,15 @@ def get_current_temp(field):
     return temp
 
 
-def get_current_temps_formatted():
+def get_current_values_formatted():
     """
-    :return: A formated string of all temps
+    :return: A formated string of all values
     """
-    temps = GetLog().get_current()
+    values = GetLog().get_current()
     out = []
-    for name, value in temps.iteritems():
-        out.append(u"{name:s}:{temp:s}\u00B0".format(name=name, temp=value))
+    for name, value in values.iteritems():
+#        out.append(u"{name:s}:{temp:s}\u00B0".format(name=name, temp=value))
+        out.append(u"{name:s}:{temp:s}<br>".format(name=name, temp=value))
     output = u"    ".join(out)
     return output
 

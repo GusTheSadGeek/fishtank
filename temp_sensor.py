@@ -1,24 +1,25 @@
 #!/usr/bin/python
 
-import tank_debug
+import debug
 import time
 import datetime
 
 import tank
 import logging
-import tank_log
+import logg
+import cfg
 
 
 class TempSensor(tank.Ticker):
-    def __init__(self, cfg):
+    def __init__(self, config):
         super(TempSensor, self).__init__()
-        self._sensor_file = cfg['sensor']
+        self._sensor_file = config[cfg.ITEM_SENSOR]
+        self._name = config[cfg.ITEM_NAME]
         self._current_temp = 0
-        self._name = cfg['name']
         self._next_read_time = time.time()
-        self._logger = tank_log.TankLog()
+        self._logger = logg.TankLog()
         self._action_interval = 60
-        if tank_debug.TEMP_TEST != 0:
+        if debug.TEMP_TEST != 0:
             self._current_temp = self.test_temp()
 
     def test_temp(self, m=None):
@@ -71,7 +72,7 @@ class TempSensor(tank.Ticker):
             self._logger.log_value(self.name, "{temp:6.3f}".format(temp=self._current_temp))
 
     def _get_temp_raw(self):
-        if tank_debug.TEMP_TEST == 0:
+        if debug.TEMP_TEST == 0:
             try:
                 with open(self._sensor_file, 'r') as f:
                     lines = f.readlines()
@@ -87,7 +88,7 @@ class TempSensor(tank.Ticker):
         return lines
 
     def _read_temp(self):
-        if tank_debug.TEMP_TEST != 0:
+        if debug.TEMP_TEST != 0:
             self._current_temp = self.test_temp()
             return self._current_temp
         else:

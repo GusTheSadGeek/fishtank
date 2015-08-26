@@ -1,20 +1,11 @@
+import tank
 
-
-
-
-
-
-
-class Graph(object):
+class Graph(tank.Ticker):
     def __init__(self, cfg):
-        pass
+        super(Graph, self).__init__()
 
     def init(self):
         pass
-
-    # @property
-    # def current_value(self):
-    #     return 0
 
     def tick(self):
         pass

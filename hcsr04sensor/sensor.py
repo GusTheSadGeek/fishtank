@@ -4,11 +4,11 @@ sensor and a Raspberry Pi.  Imperial and Metric measurements are available'''
 # Al Audet
 # MIT License
 
-import tank_debug
+import debug
 
 import time
 import math
-if tank_debug.DIST_TEST == 0:
+if debug.DIST_TEST == 0:
     import RPi.GPIO as GPIO
 else:
     import dummy_gpio as GPIO

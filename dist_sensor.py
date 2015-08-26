@@ -2,36 +2,27 @@
 
 import hcsr04sensor.sensor as sensor
 
-import tank_debug
+import debug
 import time
 import datetime
 
 import tank
-import tank_cfg
+import cfg
 import logging
-import tank_log
-
-# configs = {'critical_water_level': config.getint('pit', 'critical_water_level'),
-#            'pit_depth': config.getint('pit', 'pit_depth'),
-#            'temperature': config.getint('pit', 'temperature'),
-#            'trig_pin': config.getint('gpio_pins', 'trig_pin'),
-#            'echo_pin': config.getint('gpio_pins', 'echo_pin'),
-#            'unit': config.get('pit', 'unit')
-#            }
-
+import logg
 
 class DistSensor(tank.Ticker):
-    def __init__(self, cfg):
+    def __init__(self, config):
         super(DistSensor, self).__init__()
-        self.trig_pin = cfg[tank_cfg.ITEM_TRIGPIN]
-        self.echo_pin = cfg[tank_cfg.ITEM_ECHOPIN]
-        self.tank_depth = cfg[tank_cfg.ITEM_TANKDEPTH]
+        self.trig_pin = config[cfg.ITEM_TRIGPIN]
+        self.echo_pin = config[cfg.ITEM_ECHOPIN]
+        self.tank_depth = config[cfg.ITEM_TANKDEPTH]
+        self._name = config[cfg.ITEM_NAME]
         self._current_dist = 0
-        self._name = cfg['name']
         self._next_read_time = time.time()
-        self._logger = tank_log.TankLog()
+        self._logger = logg.TankLog()
         self._action_interval = 60
-        if tank_debug.TEMP_TEST != 0:
+        if debug.TEMP_TEST != 0:
             self._current_dist = self.test_dist()
 
     def test_dist(self, m=None):
@@ -84,7 +75,7 @@ class DistSensor(tank.Ticker):
             self._logger.log_value(self.name, "{dist:6.1f}".format(dist=self._current_dist))
 
     def _get_distance(self):
-        if tank_debug.DIST_TEST != 0:
+        if debug.DIST_TEST != 0:
             self._current_dist = self.test_dist()
         else:
             round_to = 1

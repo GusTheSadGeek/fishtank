@@ -8,10 +8,10 @@ from flask import Flask, send_file, Response, request
 import traceback
 
 import tank
-import tank_relayController
-import tank_debug
-import tank_cfg
-import tank_log
+import relay
+import debug
+import cfg
+import logg
 
 app = Flask(__name__)
 
@@ -38,13 +38,15 @@ class LogStuff(object):
     def get_temp_log(self, days, graph_type):
         key = graph_type+str(days)
 
+        last_changed = logg.log_last_changed()
+        if last_changed != self._last_changed:
+            self._log = {}
 
-        last_changed = tank_log.log_last_changed()
-        if (last_changed != self._last_changed) or (key not in self._log):
+        if key not in self._log:
 #        if True:
             self._last_changed = last_changed
 
-            logdata, mn, mx, sensor_names = tank_log.get_temp_log(days, graph_type)
+            logdata, mn, mx, sensor_names = logg.get_temp_log(days, graph_type)
 #            temperature.get_temp_log(days, graph_type)
             new_log = []
             for e in logdata:
@@ -92,7 +94,7 @@ def graph(days, graph):
         a.append("data.addColumn('number', '{name}');".format(name=name))
     a.append("data.addRows([")
 
-    scale = int(graph['scale'])
+    scale = int(graph[cfg.ITEM_SCALE])
 
     c1 = """
       ]);
@@ -103,7 +105,7 @@ def graph(days, graph):
           subtitle: 'in Centigrade',
         },
         vAxis: {
-          title:'degrees',
+          title:'"""+graph[cfg.ITEM_YAXIS]+"""',
             viewWindow: {
               min: """ + str(mn) + """,
               max: """ + str(mx) + """
@@ -125,20 +127,20 @@ def main_page(ctrl=False):
     line += '<a href="{cp}?d=30"> Month </a><br>'.format(cp=current_path)
     line += '<a href="{cp}?d=7"> Week </a><br>'.format(cp=current_path)
     line += '<a href="{cp}?d=1"> Day </a><br>'.format(cp=current_path)
-    for chart in cfg.graphs_types:
+    for chart in config.graphs_types:
         name = "linechart_{chart}".format(chart=chart)
         line += '<br><div id="{name}" style=" width:1000px;"></div>'.format(name=name)
     line += gettimestamp() + "<br><br>"
-    line += tank_log.get_current_temps_formatted()+"<br><br>"
+    line += logg.get_current_values_formatted()+"<br><br>"
     for relay in conf:
-        line += relay['name'] + ' ' + tank_relayController.get_relay_state_str(relay['name']) + "<br>"
+        line += relay['name'] + ' ' + relay.get_relay_state_str(relay['name']) + "<br>"
     line += '<br><br>'
     if ctrl:
-        for relay in cfg.relay_items:
+        for relay in config.relay_items:
             line += '<a href="{cp}/TR?r={n}">Toggle {r}</a></br>'.\
                 format(cp=current_path, n=relay['name'], r=relay['name'])
         line += '<br><br>'
-        for relay in cfg.timer_items:
+        for relay in config.timer_items:
             q = tank.get_relay_query(relay['name'])
             line += '<a href="{cp}/setr{q}">Set {r} Timings</a></br>'.\
                 format(cp=current_path, q=q, r=relay['name'])
@@ -171,7 +173,7 @@ def view(ctrl=False):
         prev_count = day_count
 
         charts = []
-        for g in cfg.graph_items:
+        for g in config.graph_items:
             q = graph(day_count, g)
             charts.append(q)
 
@@ -229,7 +231,7 @@ def setrelay():
     fri = request.args.get('fri')
     sat = request.args.get('sat')
     sun = request.args.get('sun')
-    tank_relayController.set_schedule(relay_name, mon, tue, wed, thu, fri, sat, sun)
+    tank.set_schedule(relay_name, mon, tue, wed, thu, fri, sat, sun)
     page = """
 <!doctype html>
 <html lang="en">
@@ -332,7 +334,7 @@ def temp():
 
 @app.route("/LOG")
 def log():
-    text, __, __, __ = tank_log.get_temp_log(9999)
+    text, __, __, __ = logg.get_temp_log(9999)
     return Response('<br>'.join(text), mimetype="text/html")
 
 
@@ -341,10 +343,10 @@ def log():
 
 if __name__ == "__main__":
 #    try:
-        cfg = tank_cfg.Config()
+        config = cfg.Config()
 
-        graphs = cfg.graphs_types
-        graphed = cfg.graphed_items
+        graphs = config.graphs_types
+        graphed = config.graphed_items
         #
         # for r in cfg.items:
         #     if r[tank_cfg.ITEM_TYPE] == tank_cfg.TIMER_TYPE:
@@ -361,7 +363,7 @@ if __name__ == "__main__":
         #         f = l.split(' ')
         #         conf[f[0]] = ' '.join(f[1:])
 
-        if tank_debug.TEST == 0:
+        if debug.TEST == 0:
             app.run(host='0.0.0.0', port=5000)
         else:
             app.run(host='0.0.0.0', port=5001)

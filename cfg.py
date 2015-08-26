@@ -1,9 +1,9 @@
 import ConfigParser
-import tank_relayController
+import relay
 import timer
-import tank_temp
+import temp_sensor
 import graph
-import tank_dist
+import dist_sensor
 
 RELAY_TYPE = 0
 TIMER_TYPE = 1
@@ -27,6 +27,7 @@ ITEM_GRAPH = 'graph'
 ITEM_LOGCOL = 'logcol'
 ITEM_HEIGHT = 'height'
 ITEM_SCALE = 'scale'
+ITEM_YAXIS = 'yaxis'
 ITEM_OBJECT = 'object'
 
 
@@ -207,19 +208,20 @@ class Config(object):
         self.add_val(item, section, ITEM_LOGCOL)
         self.add_val(item, section, ITEM_HEIGHT)
         self.add_val(item, section, ITEM_SCALE)
+        self.add_val(item, section, ITEM_YAXIS)
 
         if section.startswith('relay'):
             item_type = RELAY_TYPE
-            item_object = tank_relayController.Relay(item)
+            item_object = relay.Relay(item)
         if section.startswith('temp'):
             item_type = TEMP_TYPE
-            item_object = tank_temp.TempSensor(item)
+            item_object = temp_sensor.TempSensor(item)
         if section.startswith('timer'):
             item_type = TIMER_TYPE
             item_object = timer.Timer(item)
         if section.startswith('dist'):
             item_type = DIST_TYPE
-            item_object = tank_dist.DistSensor(item)
+            item_object = dist_sensor.DistSensor(item)
         if section.startswith('graph'):
             item_type = GRAPH_TYPE
             item_object = graph.Graph(item)
