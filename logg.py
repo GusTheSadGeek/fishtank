@@ -46,8 +46,10 @@ class TankLog(tank.Ticker):
 
     def init(self):
         for item in cfg.Config().items:
-            if item[cfg.ITEM_LOGCOL] is not None:
-                self.cols[item[cfg.ITEM_LOGCOL]] = item[cfg.ITEM_NAME]
+            if item is not None:
+                if cfg.ITEM_LOGCOL in item:
+                    if item[cfg.ITEM_LOGCOL] is not None:
+                        self.cols[item[cfg.ITEM_LOGCOL]] = item[cfg.ITEM_NAME]
 
     def log_value(self, key, logvalue, current=None):
         if current is None:
@@ -67,7 +69,7 @@ class TankLog(tank.Ticker):
 
         now = time.time()
         diff = self.tna - now
-        logging.debug("{n} {tnr} {diff}".format(n=now,tnr=self.tna,diff=diff))
+#        logging.debug("{n} {tnr} {diff}".format(n=now,tnr=self.tna,diff=diff))
         if self.tna < time.time():
             logging.info("logging")
             now = datetime.datetime.now()

@@ -21,7 +21,7 @@ class DistSensor(tank.Ticker):
         self._current_dist = 0
         self._next_read_time = time.time()
         self._logger = logg.TankLog()
-        self._action_interval = 60
+        self._action_interval = 10
         if debug.TEMP_TEST != 0:
             self._current_dist = self.test_dist()
 
@@ -67,22 +67,28 @@ class DistSensor(tank.Ticker):
 
     # Override base
     def tick(self):
+#        logging.info("dist tick")
         now = time.time()
         if now >= self._next_read_time:
+#            logging.info("dist tick2")
             self._get_distance()
             self._next_read_time = self.time_next_action()
-            logging.info("{s} temp {t}".format(s=self.name, t=self._current_dist))
+            logging.info("{s} dist {t}".format(s=self.name, t=self._current_dist))
             self._logger.log_value(self.name, "{dist:6.1f}".format(dist=self._current_dist))
 
     def _get_distance(self):
         if debug.DIST_TEST != 0:
             self._current_dist = self.test_dist()
         else:
+#            logging.info("dist tick3")
             round_to = 1
             temperature = 20  # TODO
 
+#            logging.info("dist tick4")
             value = sensor.Measurement(self.trig_pin, self.echo_pin, temperature, 'metric', round_to)
+#            logging.info("dist tick5")
             raw_distance = value.raw_distance()
+#            logging.info("dist tick6")
 
             # If tank depth is defined then give a water depth
             if self.tank_depth is not None:
@@ -91,6 +97,7 @@ class DistSensor(tank.Ticker):
             else:
                 # otherwise give a distance to water surface
                 self._current_dist = raw_distance
+            logging.info("{x}".format(x=self._current_dist))
 
 
 def main():

@@ -160,7 +160,9 @@ class Config(object):
             if s.startswith('general'):
                 self._temp_interval = self._config.getint('general', 'temp_interval')
             else:
-                self._items.append(self.setup_item(s))
+		item = self.setup_item(s)
+		if item is not None:
+	                self._items.append(item)
 
             # if s.startswith('relay'):
             #     self._relays.append(self.setup_relay(s))

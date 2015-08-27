@@ -12,6 +12,7 @@ if debug.DIST_TEST == 0:
     import RPi.GPIO as GPIO
 else:
     import dummy_gpio as GPIO
+    print "DEBUG DIST"
 
 class Measurement(object):
     '''Create a measurement using a HC-SR04 Ultrasonic Sensor connected to 
@@ -22,6 +23,8 @@ class Measurement(object):
         self.temperature = temperature
         self.unit = unit
         self.round_to = round_to
+        print self.trig_pin
+        print self.echo_pin
 
     def raw_distance(self):
         '''Return an error corrected unrounded distance, in cm, of an object 
@@ -42,7 +45,7 @@ class Measurement(object):
             sonar_signal_off = 0     # default value - for testing
             sonar_signal_on = 0.001  # default value - for testing
             GPIO.setwarnings(False)
-            GPIO.setmode(GPIO.BCM)
+            GPIO.setmode(GPIO.BOARD)
             GPIO.setup(self.trig_pin, GPIO.OUT)
             GPIO.setup(self.echo_pin, GPIO.IN)
             GPIO.output(self.trig_pin, GPIO.LOW)
@@ -56,11 +59,13 @@ class Measurement(object):
                 sonar_signal_on = time.time()
             time_passed = sonar_signal_on - sonar_signal_off
             distance_cm = time_passed * ((speed_of_sound * 100) / 2)
+#            print time_passed, distance_cm
             sample.append(distance_cm)
             # Only cleanup the pins used to prevent clobbering any others in use by the program
             GPIO.cleanup(self.trig_pin)
             GPIO.cleanup(self.echo_pin)
         sorted_sample = sorted(sample)
+#        print "ret = {a}".format(a=sorted_sample[5])
         return sorted_sample[5]
 
     def depth_metric(self, median_reading, hole_depth):

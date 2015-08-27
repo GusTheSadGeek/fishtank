@@ -132,14 +132,18 @@ def main():
 
     tank_logger.init()
     for item in config.items:
-        item[cfg.ITEM_OBJECT].init()
+        if item is not None:
+            if cfg.ITEM_OBJECT in item:
+                item[cfg.ITEM_OBJECT].init()
 
     print ("TANK Monitor Running....")
     while True:
         time.sleep(5)
         check_comms()
         for item in config.items:
-            item[cfg.ITEM_OBJECT].tick()
+            if item is not None:
+                if cfg.ITEM_OBJECT in item:
+                    item[cfg.ITEM_OBJECT].tick()
         tank_logger.tick()
 
 

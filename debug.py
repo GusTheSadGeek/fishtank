@@ -14,5 +14,7 @@ try:
     DIST_TEST = mydebug.DIST_TEST
 except ImportError:
     pass
+except AttributeError:
+    pass
 
 
