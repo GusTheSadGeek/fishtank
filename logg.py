@@ -3,13 +3,16 @@
 import os
 import time
 import datetime
-import threading
+
 
 import logging
 import cfg
+import tank
+
 
 value_log_file = '/var/log/tank/temps.txt'
 current_value_file = '/mnt/ram/current_temps.txt'
+
 
 def setup_log():
     default_log_dir = r'/var/log/tank/'
@@ -22,6 +25,104 @@ def setup_log():
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
 
+class TankLog(tank.Ticker):
+    """
+    Borg (singleton) class
+    """
+    __shared_state = {}
+
+    def __init__(self):
+        self.__dict__ = self.__shared_state
+        if '_first_time' not in self.__dict__:
+            super(TankLog, self).__init__()
+            self._first_time = False
+            self.lines = ''
+            self.current_log_values = {}
+            self.current_values = {}
+            self.interval = 120
+            self.cols = {}
+            self.tna = self.time_next_action()
+#            self.tna = time.time()+10
+
+    def init(self):
+        for item in cfg.Config().items:
+            if item[cfg.ITEM_LOGCOL] is not None:
+                self.cols[item[cfg.ITEM_LOGCOL]] = item[cfg.ITEM_NAME]
+
+    def log_value(self, key, logvalue, current=None):
+        if current is None:
+            current = logvalue
+        self.current_values[key] = str(current)
+        self.current_log_values[key] = str(logvalue)
+
+    def tick(self):
+        try:
+            with open(current_value_file, 'w') as f:
+                for key, value in self.current_values.iteritems():
+                    s = "{name}={temp}\n".format(name=key, temp=value)
+                    f.write(s)
+        except IOError as e:
+            logging.error(str(e))
+            logging.error("Error writing to temp file {f}".format(current_value_file))
+
+        now = time.time()
+        diff = self.tna - now
+        logging.debug("{n} {tnr} {diff}".format(n=now,tnr=self.tna,diff=diff))
+        if self.tna < time.time():
+            logging.info("logging")
+            now = datetime.datetime.now()
+            temps_output = []
+            for col in range(10):
+                if str(col) in self.cols:
+                    temps_output.append("{val}".format(val=self.current_log_values[self.cols[str(col)]]))
+
+            date = "{a},{b},{c},{d},{e}". \
+                format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
+
+            output2 = "{date:s},{temps:s}\n". \
+                format(date=date, temps=','.join(temps_output))
+
+            try:
+                with open(value_log_file, 'a') as f:
+                    f.write(output2)
+            except IOError as e:
+                logging.error(str(e))
+                logging.error("Error writing to temp file {f}".format(value_log_file))
+
+            self.tna = self.time_next_action()
+
+    # def time_next_recording(self):
+    #     now = datetime.datetime.now()
+    #     secs_since_hour = (now.minute * 60) + now.second
+    #     i = 0
+    #     while i < secs_since_hour:
+    #         i += self.interval
+    #     r = time.time() + i - secs_since_hour
+    #     return r
+
+    # def get_temp(self, index):
+    #     if len(self.sensors) < index:
+    #         return self.sensors[index].current_temp
+    #     else:
+    #         return -1.0
+
+    # def read_temp(self, index):
+    #     if len(self.sensors) < index:
+    #         return self.sensors[index].read_temp()
+    #     else:
+    #         return -1.0
+
+    # def get_all(self):
+    #     temps = []
+    #     for s in self.sensors:
+    #         temps.append(s.get_temp())
+    #     return temps
+
+    # def read_all(self):
+    #     temps = []
+    #     for s in self.sensors:
+    #         temps.append(s.read_temp())
+    #     return temps
 
 class GetLog(object):
     def __init__(self):
@@ -97,8 +198,12 @@ class GetLog(object):
                             day_count += 1
                         last_day = day
                     for lc in log_cols:
-                        self.update_min_max_values(float(fields[lc+4]))
-                        retline.append(fields[lc+4])
+                        if len(fields) > lc+4:
+                            value = fields[lc+4]
+                        else:
+                            value = "0.0"
+                        self.update_min_max_values(float(value))
+                        retline.append(value)
                     ret_lines.append(','.join(retline))
             except IndexError:
                 logging.error("Index error in log file {line}".format(line=log[index]))
@@ -113,277 +218,80 @@ class GetLog(object):
         return ret_lines, sensors
 
 
-class TankLog(object):
-    """
-    Borg (singleton) class
-    """
-    __shared_state = {}
-
-    def __init__(self):
-        self.__dict__ = self.__shared_state
-        if '_first_time' not in self.__dict__:
-            self._first_time = False
-            self.lines = ''
-            self.current_log_values={}
-            self.current_values={}
-            self.interval = 120
-            self.cols = {}
-            self.tnr = self.time_next_recording()
-            self.tnr = time.time()+10
-
-    def init(self):
-        for item in cfg.Config().items:
-            if item[cfg.ITEM_LOGCOL] is not None:
-                self.cols[item[cfg.ITEM_LOGCOL]] = item[cfg.ITEM_NAME]
-
-    def log_value(self, key, logvalue, current=None):
-        if current is None:
-            current = logvalue
-        self.current_values[key] = str(current)
-        self.current_log_values[key] = str(logvalue)
-
-    def tick(self):
-        try:
-            with open(current_value_file, 'w') as f:
-                for key, value in self.current_values.iteritems():
-                    s = "{name}={temp}\n".format(name=key, temp=value)
-                    f.write(s)
-        except IOError as e:
-            logging.error(str(e))
-            logging.error("Error writing to temp file {f}".format(current_value_file))
-
-        now = time.time()
-        diff = self.tnr - now
-        logging.debug("{n} {tnr} {diff}".format(n=now,tnr=self.tnr,diff=diff))
-        if self.tnr < time.time():
-            logging.info("logging")
-            now = datetime.datetime.now()
-            temps_output = []
-            for col in range(10):
-                if str(col) in self.cols:
-                    temps_output.append("{val}".format(val=self.current_log_values[self.cols[str(col)]]))
-
-            date = "{a},{b},{c},{d},{e}". \
-                format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
-
-            output2 = "{date:s},{temps:s}\n". \
-                format(date=date, temps=','.join(temps_output))
-
-            try:
-                with open(value_log_file, 'a') as f:
-                    f.write(output2)
-            except IOError as e:
-                logging.error(str(e))
-                logging.error("Error writing to temp file {f}".format(value_log_file))
-
-            self.tnr = self.time_next_recording()
-
-    def time_next_recording(self):
-        now = datetime.datetime.now()
-        secs_since_hour = (now.minute * 60) + now.second
-        i = 0
-        while i < secs_since_hour:
-            i += self.interval
-        r = time.time() + i - secs_since_hour
-        return r
 
 
-
-
-
-    # def task(self):
-    #     tnr = self.time_next_recording()
-    #     logging.info("temp recorder task starting")
-    #     self._stopped = False
-    #     try:
-    #         while not self._stop:
-    #             temps = self.read_all()
-    #             if tnr < time.time():
-    #                 now = datetime.datetime.now()
-    #                 temps_output = []
-    #                 for t in temps:
-    #                     temps_output.append("{temp:6.3f}".format(temp=t))
-    #
-    #                 date = "{a},{b},{c},{d},{e}". \
-    #                     format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
-    #
-    #                 output2 = "{date:s},{temps:s}\n". \
-    #                     format(date=date, temps=','.join(temps_output))
-    #
-    #                 try:
-    #                     # output2 = u"[new Date({date:s}),{temp1:2.3f},{temp2:2.3f}],\n".\
-    #                     #     format(date=date, temp1=self.room_temp, temp2=self.tank_temp)
-    #                     with open(value_log_file, 'a') as f:
-    #                         f.write(output2)
-    #                 except IOError as e:
-    #                     logging.error(str(e))
-    #                     logging.error("Error writing to temp file {f}".format(value_log_file))
-    #
-    #             try:
-    #                 with open(current_value_file, 'w') as f:
-    #                     for s in self.sensors:
-    #                         s = "{name}={temp:6.3f}\n".format(name=s.name, temp=s.current_temp)
-    #                         f.write(s)
-    #             except IOError as e:
-    #                 logging.error(str(e))
-    #                 logging.error("Error writing to temp file {f}".format(current_value_file))
-    #
-    #             time.sleep(2)
-    #             tnr = self.time_next_recording()
-    #             q = min(58, tnr - time.time())
-    #             while q > 0 and not self._stop:
-    #                 time.sleep(1)
-    #                 q -= 1
-    #     finally:
-    #         logging.critical("temp recorder task stopped")
-    #         self._stopped = True
-    #         with open(current_value_file, 'w') as f:
-    #             for s in self.sensors:
-    #                 s = "{name}=STOPPED\n".format(name=s.name)
-    #                 f.write(s)
-    #         print "Temp Recording stopped"
-
-
-    # def load(self, filename):
-    #     try:
-    #         with open(filename, 'r') as f:
-    #             lines = f.read().split('\n')
-    #         self.sensors = []
-    #         for l in lines:
-    #             if len(l) > 2:
-    #                 if ":" in l:
-    #                     f = l.split(':')
-    #                     ts = TempSensor(f[1], f[0])
-    #                     self.sensors.append(ts)
-    #                 else:
-    #                     self.minutes = True
-    #     except IOError:
-    #         return 1
-    #     return 0
-
-    def get_temp(self, index):
-        if len(self.sensors) < index:
-            return self.sensors[index].current_temp
-        else:
-            return -1.0
-
-    def read_temp(self, index):
-        if len(self.sensors) < index:
-            return self.sensors[index].read_temp()
-        else:
-            return -1.0
-
-    # def get_tank_temp(self):
-    #     return self.tank_sensor.current_temp
-    #
-    # def get_room_temp(self):
-    #     return self.room_sensor.current_temp
-    #
-    # def read_tank_temp(self):
-    #     return self.tank_sensor.read_temp()
-    #
-    # def read_room_temp(self):
-    #     return self.room_sensor.read_temp()
-
-    def get_all(self):
-        temps = []
-        for s in self.sensors:
-            temps.append(s.get_temp())
-        return temps
-
-    def read_all(self):
-        temps = []
-        for s in self.sensors:
-            temps.append(s.read_temp())
-        return temps
-        # room_temp = self.read_room_temp()
-        # tank_temp = self.read_tank_temp()
-        # return room_temp, tank_temp
-
-    def start(self):
-        thread = threading.Thread(target=self.task)
-        thread.start()
-
-    def stop(self):
-        if not self._stop:
-            print "Stopping Temp Recording.."
-            self._stop = True
-
-
-
-
-class GetLog2(object):
-    def __init__(self):
-        self.min_value = 999.00
-        self.max_value = -999.00
-
-    def update_min_max_values(self, value):
-        if value > self.max_value:
-            self.max_value = value
-        if value < self.min_value:
-            self.min_value = value
-
-    @classmethod
-    def get_current(cls):
-        values = {}
-        try:
-            with open(current_value_file, 'r') as f:
-                log = f.read()
-            lines = log.split('\n')
-            for l in lines:
-                if len(l) > 3:
-                    if '=' in l:
-                        f = l.split('=')
-                        values[f[0]] = f[1]
-        except IOError:
-            logging.error("IOError: Could not get current value from {f}".format(f=current_value_file))
-        except IndexError:
-            logging.error("IndexError: Could not get current value from {f}".format(f=current_value_file))
-        return values
-
-    @classmethod
-    def last_changed(cls):
-        return os.path.getmtime(value_log_file)
-
-    def get_log(self, days):
-        # if mydebug.TEMP_TEST == 0:
-        file_name = value_log_file
-        # else:
-        #    file_name = test_temp_file
-
-        try:
-            with open(file_name, 'r') as f:
-                log = f.read().split('\n')
-        except IOError:
-            log = "error"
-
-        index = 0
-        day_count = 0
-        last_day = None
-        for index in range(len(log)-1, -1, -1):
-            try:
-                line = log[index].strip(',')
-                if len(line) > 5:
-                    fields = line.split(',')
-                    temps = fields[5:]
-                    for t in temps:
-                        self.update_min_max_values(float(t))
-                    day = fields[2]
-                    if day != last_day:
-                        if last_day is not None:
-                            day_count += 1
-                        last_day = day
-            except IndexError:
-                logging.error("Index error in log file {line}".format(line=log[index]))
-            except ValueError:
-                logging.error("Value error in log file {line}".format(line=log[index]))
-
-            if day_count >= days:
-                break
-
-        ret_lines = log[(index+1):]
-
-        return ret_lines
+# class GetLog2(object):
+#     def __init__(self):
+#         self.min_value = 999.00
+#         self.max_value = -999.00
+#
+#     def update_min_max_values(self, value):
+#         if value > self.max_value:
+#             self.max_value = value
+#         if value < self.min_value:
+#             self.min_value = value
+#
+#     @classmethod
+#     def get_current(cls):
+#         values = {}
+#         try:
+#             with open(current_value_file, 'r') as f:
+#                 log = f.read()
+#             lines = log.split('\n')
+#             for l in lines:
+#                 if len(l) > 3:
+#                     if '=' in l:
+#                         f = l.split('=')
+#                         values[f[0]] = f[1]
+#         except IOError:
+#             logging.error("IOError: Could not get current value from {f}".format(f=current_value_file))
+#         except IndexError:
+#             logging.error("IndexError: Could not get current value from {f}".format(f=current_value_file))
+#         return values
+#
+#     @classmethod
+#     def last_changed(cls):
+#         return os.path.getmtime(value_log_file)
+#
+#     def get_log(self, days):
+#         # if mydebug.TEMP_TEST == 0:
+#         file_name = value_log_file
+#         # else:
+#         #    file_name = test_temp_file
+#
+#         try:
+#             with open(file_name, 'r') as f:
+#                 log = f.read().split('\n')
+#         except IOError:
+#             log = "error"
+#
+#         index = 0
+#         day_count = 0
+#         last_day = None
+#         for index in range(len(log)-1, -1, -1):
+#             try:
+#                 line = log[index].strip(',')
+#                 if len(line) > 5:
+#                     fields = line.split(',')
+#                     temps = fields[5:]
+#                     for t in temps:
+#                         self.update_min_max_values(float(t))
+#                     day = fields[2]
+#                     if day != last_day:
+#                         if last_day is not None:
+#                             day_count += 1
+#                         last_day = day
+#             except IndexError:
+#                 logging.error("Index error in log file {line}".format(line=log[index]))
+#             except ValueError:
+#                 logging.error("Value error in log file {line}".format(line=log[index]))
+#
+#             if day_count >= days:
+#                 break
+#
+#         ret_lines = log[(index+1):]
+#
+#         return ret_lines
 
 
 def get_current_temps():
@@ -578,33 +486,33 @@ def convert_log(infile, outfile):
 #                 q += 1
 #
 #         print "stopping_1"
-
-
-def main():
-    setup_log()
-    logging.info("Started recording temps")
-    # tr = TempRecorder()
-    # tr.start()
-    # running = True
-    # while running:
-    #     try:
-    #         time.sleep(60)
-    #         # for _ in range(60):
-    #         #     if running:
-    #         #         time.sleep(1)
-    #         if running and tr.stopped:
-    #             logging.error("Restarting temp recorder task")
-    #             tr.start()
-    #     except KeyboardInterrupt:
-    #         print("\nCtrl-C  KeyboardInterrupt\n")
-    #         running = False
-    #         tr.stop()
-    #
-    # logging.info("Stopped recording temps")
-
-
-if __name__ == "__main__":
-    #    log,a,b = get_temp_log(5)
-    #    print log
-    #    print a,b
-    main()
+#
+#
+# def main():
+#     setup_log()
+#     logging.info("Started recording temps")
+#     # tr = TempRecorder()
+#     # tr.start()
+#     # running = True
+#     # while running:
+#     #     try:
+#     #         time.sleep(60)
+#     #         # for _ in range(60):
+#     #         #     if running:
+#     #         #         time.sleep(1)
+#     #         if running and tr.stopped:
+#     #             logging.error("Restarting temp recorder task")
+#     #             tr.start()
+#     #     except KeyboardInterrupt:
+#     #         print("\nCtrl-C  KeyboardInterrupt\n")
+#     #         running = False
+#     #         tr.stop()
+#     #
+#     # logging.info("Stopped recording temps")
+#
+#
+# if __name__ == "__main__":
+#     #    log,a,b = get_temp_log(5)
+#     #    print log
+#     #    print a,b
+#     main()
