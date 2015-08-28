@@ -1,14 +1,14 @@
 #!/usr/bin/python
 
-import os
-#import tank_temp as temperature
+# import os
+# import tank_temp as temperature
 
 import datetime
 from flask import Flask, send_file, Response, request
 import traceback
 
 import tank
-import relay
+# import relay
 import debug
 import cfg
 import logg
@@ -43,11 +43,9 @@ class LogStuff(object):
             self._log = {}
 
         if key not in self._log:
-#        if True:
             self._last_changed = last_changed
 
             logdata, mn, mx, sensor_names = logg.get_temp_log(days, graph_type)
-#            temperature.get_temp_log(days, graph_type)
             new_log = []
             for e in logdata:
                 fields = e.split(',')
@@ -65,9 +63,9 @@ def gettimestamp():
     return output
 
 
-def graph(days, graph):
-    chart_name = 'linechart_'+graph['name']
-    b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graph['name'])
+def graph(days, graphobj):
+    chart_name = 'linechart_'+graphobj['name']
+    b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graphobj['name'])
 
     a = [
         """<script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -94,7 +92,7 @@ def graph(days, graph):
         a.append("data.addColumn('number', '{name}');".format(name=name))
     a.append("data.addRows([")
 
-    scale = int(graph[cfg.ITEM_SCALE])
+    scale = int(graphobj[cfg.ITEM_SCALE])
 
     c1 = """
       ]);
@@ -105,7 +103,7 @@ def graph(days, graph):
           subtitle: 'in Centigrade',
         },
         vAxis: {
-          title:'"""+graph[cfg.ITEM_YAXIS]+"""',
+          title:'"""+graphobj[cfg.ITEM_YAXIS]+"""',
             viewWindow: {
               min: """ + str(mn) + """,
               max: """ + str(mx) + """
@@ -113,7 +111,7 @@ def graph(days, graph):
           ticks: [""" + ','.join(map(str, range(mn, mx+1, scale))) + """]
         },
         width: 1000,
-        height: """+graph['height']+"""
+        height: """+graphobj['height']+"""
       };
       var chart = new google.visualization.LineChart(document.getElementById('"""+chart_name+"""'));
       chart.draw(data, options);
@@ -121,6 +119,7 @@ def graph(days, graph):
     </script>
     """
     return '\n'.join(a) + b + c1
+
 
 def main_page(ctrl=False):
     line = '<a href="{cp}?d=9999"> All </a><br>'.format(cp=current_path)
@@ -159,6 +158,7 @@ def main_page(ctrl=False):
 
 
 def view(ctrl=False):
+    line = ''
     try:
         global prev_count
         try:
@@ -334,40 +334,17 @@ def temp():
 
 @app.route("/LOG")
 def log():
-    text, __, __, __ = logg.get_temp_log(9999)
+    text, __, __, __ = logg.get_temp_log(9999, None)
     return Response('<br>'.join(text), mimetype="text/html")
 
 
-# controller = relayController.Controller()
-# controller.init_timers()
-
 if __name__ == "__main__":
-#    try:
         config = cfg.Config()
 
         graphs = config.graphs_types
         graphed = config.graphed_items
-        #
-        # for r in cfg.items:
-        #     if r[tank_cfg.ITEM_TYPE] == tank_cfg.TIMER_TYPE:
-        #         conf.append(r)
-        #
-        # for r in cfg.items:
-        #     if r[tank_cfg.ITEM_TYPE] == tank_cfg.TIMER_TYPE:
-        #         conf.append(r)
-
-
-        # for l in lines:
-        #     l = l.strip()
-        #     if len(l) > 0:
-        #         f = l.split(' ')
-        #         conf[f[0]] = ' '.join(f[1:])
 
         if debug.TEST == 0:
             app.run(host='0.0.0.0', port=5000)
         else:
             app.run(host='0.0.0.0', port=5001)
-    # except IOError:
-    #     print "Could not read 'main.conf' config file"
-
-    # controller.stop()

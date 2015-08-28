@@ -102,13 +102,3 @@ class TempSensor(tank.Ticker):
                 temp_string = lines[1].strip()[temp_output+2:]
                 self._current_temp = float(temp_string) / 1000.0
                 return self._current_temp
-
-
-def main():
-    pass
-
-if __name__ == "__main__":
-    #    log,a,b = get_temp_log(5)
-    #    print log
-    #    print a,b
-    main()

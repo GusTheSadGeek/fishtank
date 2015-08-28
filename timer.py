@@ -111,32 +111,3 @@ class Timer(tank.Ticker):
 def get_query(file_name):
     s = Schedule(file_name)
     return s.get_query()
-
-
-# while True:
-#    time.sleep(100)
-
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=0, minute=1))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=1, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=2, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=3, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=4, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=5, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=6, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=7, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=8, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=9, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=10, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=11, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=12, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=13, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=14, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=15, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=16, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=17, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=18, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=19, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=20, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=21, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=22, minute=0))
-# t.tick(datetime.datetime(year=1, month=1, day=6, hour=23, minute=1))

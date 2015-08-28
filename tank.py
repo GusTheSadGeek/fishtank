@@ -34,9 +34,8 @@ import timer
 import datetime
 
 
-
-
-
+comms_file = "/mnt/ram/relay_control.txt"
+status_file = "/mnt/ram/relay_status.txt"
 
 
 def setup_log():
@@ -50,16 +49,12 @@ def setup_log():
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
 
-
-comms_file = "/mnt/ram/relay_control.txt"
-status_file = "/mnt/ram/relay_status.txt"
-
-def toggle_relay(id):
+def toggle_relay(name):
     while os.path.exists(comms_file):
         time.sleep(1)
 
     with open(comms_file, 'w') as f:
-        f.write("togglerelay {id} \n".format(id=id))
+        f.write("togglerelay {name} \n".format(name=name))
 
 
 def set_schedule(n, mon, tue, wed, thu, fri, sat, sun):
@@ -68,12 +63,12 @@ def set_schedule(n, mon, tue, wed, thu, fri, sat, sun):
                 format(n=n, m=mon, t=tue, w=wed, th=thu, f=fri, sa=sat, su=sun))
 
 
-def get_relay_query(id):
-    filename = ("{id}.sched".format(id=id)).replace(' ', '_')
-    return "?r={id}&".format(id=id)+timer.get_query(filename)
+def get_relay_query(name):
+    filename = ("{name}.sched".format(name=name)).replace(' ', '_')
+    return "?r={name}&".format(name=name)+timer.get_query(filename)
 
 
-def get_relay_state_str(id):
+def get_relay_state_str(name):
     try:
         with open(status_file, 'r') as f:
             lines = f.read().split('\n')
@@ -82,7 +77,7 @@ def get_relay_state_str(id):
         timerr = '?'
         override = '?'
         for l in lines:
-            if l.startswith(id):
+            if l.startswith(name):
                 fields = l.split(' ')
                 actual = fields[1]
                 timerr = fields[2]
@@ -92,7 +87,6 @@ def get_relay_state_str(id):
         timerr = '?e'
         override = '?e'
     return "Actual:"+actual+"   Timer:"+timerr+"   Override:"+override
-
 
 
 def check_comms():

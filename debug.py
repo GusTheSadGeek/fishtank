@@ -7,6 +7,7 @@ RELAY_TEST = 0
 DIST_TEST = 0
 
 try:
+    # noinspection PyUnresolvedReferences
     import mydebug
 
     TEMP_TEST = mydebug.TEMP_TEST
@@ -16,5 +17,3 @@ except ImportError:
     pass
 except AttributeError:
     pass
-
-
