@@ -75,26 +75,34 @@ class Relay(tank.Ticker):
 
     def tick(self):
         if self.controller is not None:
-            new_state = self.controller.get_new_relay_state(self.on_temp, self.off_temp)
-
-            if self.controller_and is not None:
-                new_statea = self.controller_and.get_new_relay_state(self.on_temp2, self.off_temp2)
-                q = -1
-                if (new_state == 1) and (new_statea == 1):
-                    q = 1
-                if (new_state == -1) and (new_statea == -1):
-                    q = -1
-                new_state = q
-
+            if 'OFF' in tank.general_control():
+                new_state = -1
             else:
-                if self.controller_or is not None:
-                    new_stateo = self.controller_or.get_new_relay_state(self.on_temp2, self.off_temp2)
-                    q = 0
-                    if (new_state == 1) and (new_stateo == 1):
+                new_state = self.controller.get_new_relay_state(self.on_temp, self.off_temp)
+                # print "{name} {n}".format(name=self._name, n=new_state)
+
+                if self.controller_and is not None:
+                    new_statea = self.controller_and.get_new_relay_state(self.on_temp2, self.off_temp2)
+                    # print "AND {name} {n}".format(name=self._name, n=new_statea)
+                    q = -1
+                    if (new_state == 1) and (new_statea == 1):
                         q = 1
-                    if (new_state == -1) and (new_stateo == -1):
+                    if (new_state == -1) and (new_statea == -1):
                         q = -1
                     new_state = q
+
+                else:
+                    if self.controller_or is not None:
+                        new_stateo = self.controller_or.get_new_relay_state(self.on_temp2, self.off_temp2)
+                        # print "OR {name} {n}".format(name=self._name, n=new_stateo)
+                        q = 0
+                        if (new_state == 1) and (new_stateo == 1):
+                            q = 1
+                        if (new_state == -1) and (new_stateo == -1):
+                            q = -1
+                        new_state = q
+
+#            print "{name} {n}".format(name=self._name, n=new_state)
 
             if new_state == 1:
                 self.set_state(True)

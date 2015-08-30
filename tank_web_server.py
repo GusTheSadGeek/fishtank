@@ -130,7 +130,15 @@ def main_page(ctrl=False):
         name = "linechart_{chart}".format(chart=chart)
         line += '<br><div id="{name}" style=" width:1000px;"></div>'.format(name=name)
     line += gettimestamp() + "<br><br>"
-    line += logg.get_current_values_formatted()+"<br><br>"
+
+
+    current = logg.get_current_values_formatted()
+    if 'ControlState:ACTIVE' in current:
+        current_control_state = 'ACTIVE'
+    else:
+        current_control_state = 'OFF'
+
+    line += current + "<br><br>"
     for relay in conf:
         line += relay['name'] + ' ' + relay.get_relay_state_str(relay['name']) + "<br>"
     line += '<br><br>'
@@ -153,6 +161,11 @@ def main_page(ctrl=False):
 #        line += '<a href="/TOR2">Override Light 2</a></br><br>'
     line += '</br>'
     line += '<br><br><a href="/LOG">Temp Log</a></br><br>'
+    if ctrl:
+        if 'OFF' in current_control_state:
+            line += '<br><br><a href="/ON">TURN ON</a></br><br>'
+        else:
+            line += '<br><br><a href="/OFF">TURN OFF</a></br><br>'
     line += '</body>\n'
     return line
 
@@ -336,6 +349,18 @@ def temp():
 def log():
     text, __, __, __ = logg.get_temp_log(9999, None)
     return Response('<br>'.join(text), mimetype="text/html")
+
+
+@app.route("/OFF")
+def turn_off():
+    tank.set_control_state('OFF')
+    return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
+
+
+@app.route("/ON")
+def turn_on():
+    tank.set_control_state('ACTIVE')
+    return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
 if __name__ == "__main__":

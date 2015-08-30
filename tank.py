@@ -36,6 +36,42 @@ import datetime
 
 comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
+control_state_file = "/var/log/tank/control_state.txt"
+
+
+
+_general_control = 'OFF'
+
+def general_control():
+    return _general_control
+
+def get_control_state():
+    global _general_control
+    if os.path.exists(control_state_file):
+        with open(control_state_file, 'r') as f:
+            content = f.read()
+            if 'ACTIVE' in content:
+                _general_control = 'ACTIVE'
+            else:
+                _general_control = 'OFF'
+
+get_control_state()
+
+def write_control_state():
+    if _general_control is not None:
+        with open(control_state_file, 'w') as f:
+            f.write("{state}\n".format(state=_general_control))
+
+
+def set_control_state(new_state):
+    if 'OFF' in new_state:
+        control = 'OFF'
+    else:
+        control = 'ACTIVE'
+    while os.path.exists(comms_file):
+        time.sleep(1)
+    with open(comms_file, 'w') as f:
+        f.write("control {control} \n".format(control=control))
 
 
 def setup_log():
@@ -90,6 +126,7 @@ def get_relay_state_str(name):
 
 
 def check_comms():
+    global _general_control
     if os.path.exists(comms_file):
         with open(comms_file, 'r') as f:
             data = f.read().split('\n')
@@ -97,6 +134,13 @@ def check_comms():
         config = cfg.Config()
 
         fields = data[0].split(' ')
+        if 'control' in fields[0]:
+            if 'OFF' in fields[1]:
+                _general_control = 'OFF'
+            else:
+                _general_control = 'ACTIVE'
+            write_control_state()
+
         if 'togglerelay' in fields[0]:
             relay = fields[1]
             for r in config.relay_items:
@@ -121,6 +165,9 @@ def main():
     setup_log()
     logging.info("STARTED")
     tank_logger = logg.TankLog()
+    get_control_state()
+
+    logging.info("Current control state = {s}".format(s=general_control))
 
     config = cfg.Config()
 

@@ -59,6 +59,8 @@ class TankLog(tank.Ticker):
     def tick(self):
         try:
             with open(current_value_file, 'w') as f:
+                s = "ControlState={temp}\n".format(temp=tank.general_control())
+                f.write(s)
                 for key, value in self.current_values.iteritems():
                     s = "{name}={temp}\n".format(name=key, temp=value)
                     f.write(s)
@@ -244,7 +246,7 @@ def get_current_values_formatted():
     out = []
     for name, value in values.iteritems():
         out.append(u"{name:s}:{temp:s}<br>".format(name=name, temp=value))
-    output = u"    ".join(out)
+    output = u" ".join(out)
     return output
 
 
