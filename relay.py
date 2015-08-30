@@ -45,7 +45,7 @@ class Relay(tank.Ticker):
     def __init__(self, config):
         super(Relay, self).__init__()
         self._name = config[cfg.ITEM_NAME]
-        self.pin = config[cfg.ITEM_NAME]
+        self.pin = config[cfg.ITEM_PIN]
         self.controlledby = config[cfg.ITEM_CONTROLLEDBY]
         self.controller = None
         self._logger = logg.TankLog()
@@ -59,15 +59,17 @@ class Relay(tank.Ticker):
     def init(self):
         if self.controlledby is not None:
             self.controller = cfg.Config().get_item(self.controlledby)
+        GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.pin, GPIO.OUT)
         self.turn_relay_off()
 
     def tick(self):
-        new_state = self.controller.get_new_relay_state(self.on_temp, self.off_temp)
-        if new_state == 1:
-            self.set_state(True)
-        if new_state == -1:
-            self.set_state(False)
+        if self.controller is not None:
+            new_state = self.controller.get_new_relay_state(self.on_temp, self.off_temp)
+            if new_state == 1:
+                self.set_state(True)
+            if new_state == -1:
+                self.set_state(False)
         if self.current_state == Relay.ON or self.current_state == Relay.FON:
             new_val = 5
         else:
