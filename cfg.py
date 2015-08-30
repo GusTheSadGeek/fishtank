@@ -20,7 +20,11 @@ ITEM_ECHOPIN = 'echo_pin'
 ITEM_TANKDEPTH = 'tank_depth'
 ITEM_ONVAL = 'onvalue'
 ITEM_OFFVAL = 'offvalue'
+ITEM_ONVAL2 = 'onvalue2'
+ITEM_OFFVAL2 = 'offvalue2'
 ITEM_CONTROLLEDBY = 'controlledby'
+ITEM_CONTROLLEDBY_AND = 'controlledbyand'
+ITEM_CONTROLLEDBY_OR = 'controlledbyor'
 ITEM_CONTROLS = 'controls'
 ITEM_SENSOR = 'sensor'
 ITEM_GRAPH = 'graph'
@@ -172,8 +176,12 @@ class Config(object):
 
         self.add_val_float(item, section, ITEM_ONVAL)
         self.add_val_float(item, section, ITEM_OFFVAL)
+        self.add_val_float(item, section, ITEM_ONVAL2)
+        self.add_val_float(item, section, ITEM_OFFVAL2)
 
         self.add_val(item, section, ITEM_CONTROLLEDBY)
+        self.add_val(item, section, ITEM_CONTROLLEDBY_AND)
+        self.add_val(item, section, ITEM_CONTROLLEDBY_OR)
         self.add_val(item, section, ITEM_CONTROLS)
         self.add_val(item, section, ITEM_SENSOR)
         self.add_val(item, section, ITEM_GRAPH)

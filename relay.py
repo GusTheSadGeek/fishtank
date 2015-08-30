@@ -47,10 +47,16 @@ class Relay(tank.Ticker):
         self._name = config[cfg.ITEM_NAME]
         self.pin = config[cfg.ITEM_PIN]
         self.controlledby = config[cfg.ITEM_CONTROLLEDBY]
+        self.controlledby_and = config[cfg.ITEM_CONTROLLEDBY_AND]
+        self.controlledby_or = config[cfg.ITEM_CONTROLLEDBY_OR]
         self.controller = None
+        self.controller_or = None
+        self.controller_and = None
         self._logger = logg.TankLog()
         self.on_temp = config[cfg.ITEM_ONVAL]
         self.off_temp = config[cfg.ITEM_OFFVAL]
+        self.on_temp2 = config[cfg.ITEM_ONVAL2]
+        self.off_temp2 = config[cfg.ITEM_OFFVAL2]
         self.avg = []
         self.moving_total = 0.0
         self.controller_state = 99
@@ -59,6 +65,10 @@ class Relay(tank.Ticker):
     def init(self):
         if self.controlledby is not None:
             self.controller = cfg.Config().get_item(self.controlledby)
+        if self.controlledby_and is not None:
+            self.controller_and = cfg.Config().get_item(self.controlledby_and)
+        if self.controlledby_or is not None:
+            self.controller_or = cfg.Config().get_item(self.controlledby_or)
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.pin, GPIO.OUT)
         self.turn_relay_off()
@@ -66,6 +76,26 @@ class Relay(tank.Ticker):
     def tick(self):
         if self.controller is not None:
             new_state = self.controller.get_new_relay_state(self.on_temp, self.off_temp)
+
+            if self.controller_and is not None:
+                new_statea = self.controller_and.get_new_relay_state(self.on_temp2, self.off_temp2)
+                q = -1
+                if (new_state == 1) and (new_statea == 1):
+                    q = 1
+                if (new_state == -1) and (new_statea == -1):
+                    q = -1
+                new_state = q
+
+            else:
+                if self.controller_or is not None:
+                    new_stateo = self.controller_or.get_new_relay_state(self.on_temp2, self.off_temp2)
+                    q = 0
+                    if (new_state == 1) and (new_stateo == 1):
+                        q = 1
+                    if (new_state == -1) and (new_stateo == -1):
+                        q = -1
+                    new_state = q
+
             if new_state == 1:
                 self.set_state(True)
             if new_state == -1:

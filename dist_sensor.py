@@ -54,7 +54,7 @@ class DistSensor(tank.Ticker):
         if onval is None or offval is None:
             return 0
 
-        if onval > offval:
+        if onval >= offval:
             if self._current_dist >= onval:
                 return 1
             if self._current_dist < offval:
