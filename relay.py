@@ -57,6 +57,7 @@ class Relay(tank.Ticker):
         self.off_temp = config[cfg.ITEM_OFFVAL]
         self.on_temp2 = config[cfg.ITEM_ONVAL2]
         self.off_temp2 = config[cfg.ITEM_OFFVAL2]
+        self.always_active = config[cfg.ITEM_ALWAYSACTIVE]
         self.avg = []
         self.moving_total = 0.0
         self.controller_state = 99
@@ -75,7 +76,7 @@ class Relay(tank.Ticker):
 
     def tick(self):
         if self.controller is not None:
-            if 'OFF' in tank.general_control():
+            if 'OFF' in tank.general_control() and self.always_active is None:
                 new_state = -1
             else:
                 new_state = self.controller.get_new_relay_state(self.on_temp, self.off_temp)

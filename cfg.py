@@ -32,6 +32,7 @@ ITEM_LOGCOL = 'logcol'
 ITEM_HEIGHT = 'height'
 ITEM_SCALE = 'scale'
 ITEM_YAXIS = 'yaxis'
+ITEM_ALWAYSACTIVE = 'alwaysactive'
 ITEM_OBJECT = 'object'
 
 
@@ -173,6 +174,7 @@ class Config(object):
         self.add_val_int(item, section, ITEM_TRIGPIN)
         self.add_val_int(item, section, ITEM_ECHOPIN)
         self.add_val_int(item, section, ITEM_TANKDEPTH)
+        self.add_val_int(item, section, ITEM_ALWAYSACTIVE)
 
         self.add_val_float(item, section, ITEM_ONVAL)
         self.add_val_float(item, section, ITEM_OFFVAL)
