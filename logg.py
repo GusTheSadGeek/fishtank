@@ -38,17 +38,16 @@ class TankLog(tank.Ticker):
             self.lines = ''
             self.current_log_values = {}
             self.current_values = {}
-            self.interval = 120
             self.cols = {}
-            self.tna = self.time_next_action()
+            self.tna = self.time_next_action(cfg.Config().log_interval)
 #            self.tna = time.time()+10
 
     def init(self):
         for item in cfg.Config().items:
             if item is not None:
-                if cfg.ITEM_LOGCOL in item:
-                    if item[cfg.ITEM_LOGCOL] is not None:
-                        self.cols[item[cfg.ITEM_LOGCOL]] = item[cfg.ITEM_NAME]
+                if item.logcol is not None:
+                    if item.logcol is not None:
+                        self.cols[item.logcol] = item.name
 
     def log_value(self, key, logvalue, current=None):
         if current is None:
@@ -59,7 +58,7 @@ class TankLog(tank.Ticker):
     def tick(self):
         try:
             with open(current_value_file, 'w') as f:
-                s = "ControlState={temp}\n".format(temp=tank.general_control())
+                s = "ControlState={temp}\n".format(temp=cfg.Config().control_state)
                 f.write(s)
                 for key, value in self.current_values.iteritems():
                     s = "{name}={temp}\n".format(name=key, temp=value)
@@ -68,16 +67,13 @@ class TankLog(tank.Ticker):
             logging.error(str(e))
             logging.error("Error writing to temp file {f}".format(current_value_file))
 
-#        now = time.time()
-#        diff = self.tna - now
-#        logging.debug("{n} {tnr} {diff}".format(n=now,tnr=self.tna,diff=diff))
         if self.tna < time.time():
             logging.info("logging")
             now = datetime.datetime.now()
             temps_output = []
             for col in range(10):
-                if str(col) in self.cols:
-                    temps_output.append("{val}".format(val=self.current_log_values[self.cols[str(col)]]))
+                if col in self.cols:
+                    temps_output.append("{val}".format(val=self.current_log_values[self.cols[col]]))
 
             date = "{a},{b},{c},{d},{e}". \
                 format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
@@ -92,40 +88,7 @@ class TankLog(tank.Ticker):
                 logging.error(str(e))
                 logging.error("Error writing to temp file {f}".format(value_log_file))
 
-            self.tna = self.time_next_action()
-
-    # def time_next_recording(self):
-    #     now = datetime.datetime.now()
-    #     secs_since_hour = (now.minute * 60) + now.second
-    #     i = 0
-    #     while i < secs_since_hour:
-    #         i += self.interval
-    #     r = time.time() + i - secs_since_hour
-    #     return r
-
-    # def get_temp(self, index):
-    #     if len(self.sensors) < index:
-    #         return self.sensors[index].current_temp
-    #     else:
-    #         return -1.0
-
-    # def read_temp(self, index):
-    #     if len(self.sensors) < index:
-    #         return self.sensors[index].read_temp()
-    #     else:
-    #         return -1.0
-
-    # def get_all(self):
-    #     temps = []
-    #     for s in self.sensors:
-    #         temps.append(s.get_temp())
-    #     return temps
-
-    # def read_all(self):
-    #     temps = []
-    #     for s in self.sensors:
-    #         temps.append(s.read_temp())
-    #     return temps
+            self.tna = self.time_next_action(cfg.Config().log_interval)
 
 
 class GetLog(object):
@@ -179,9 +142,9 @@ class GetLog(object):
         log_cols = []
         sensors = []
         for gi in config.graphed_items:
-            if graph_type is None or gi[cfg.ITEM_GRAPH] == graph_type:
-                log_cols.append(int(gi[cfg.ITEM_LOGCOL]))
-                sensors.append(gi[cfg.ITEM_NAME])
+            if graph_type is None or gi.graph == graph_type:
+                log_cols.append(gi.logcol)
+                sensors.append(gi.name)
 
         ret_lines = []
         day_count = 0

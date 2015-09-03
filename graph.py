@@ -5,7 +5,7 @@ import cfg
 class Graph(tank.Ticker):
     def __init__(self, config):
         super(Graph, self).__init__()
-        self._name = config[cfg.ITEM_NAME]
+        self.config = config
 
     def init(self):
         pass

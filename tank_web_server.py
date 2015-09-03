@@ -64,8 +64,8 @@ def gettimestamp():
 
 
 def graph(days, graphobj):
-    chart_name = 'linechart_'+graphobj['name']
-    b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graphobj['name'])
+    chart_name = 'linechart_'+graphobj.name
+    b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graphobj.name)
 
     a = [
         """<script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -92,7 +92,7 @@ def graph(days, graphobj):
         a.append("data.addColumn('number', '{name}');".format(name=name))
     a.append("data.addRows([")
 
-    scale = int(graphobj[cfg.ITEM_SCALE])
+    scale = int(graphobj.scale)
 
     c1 = """
       ]);
@@ -103,7 +103,7 @@ def graph(days, graphobj):
           subtitle: 'in Centigrade',
         },
         vAxis: {
-          title:'"""+graphobj[cfg.ITEM_YAXIS]+"""',
+          title:'"""+str(graphobj.yaxis)+"""',
             viewWindow: {
               min: """ + str(mn) + """,
               max: """ + str(mx) + """
@@ -111,7 +111,7 @@ def graph(days, graphobj):
           ticks: [""" + ','.join(map(str, range(mn, mx+1, scale))) + """]
         },
         width: 1000,
-        height: """+graphobj['height']+"""
+        height: """+str(graphobj.height)+"""
       };
       var chart = new google.visualization.LineChart(document.getElementById('"""+chart_name+"""'));
       chart.draw(data, options);
@@ -131,7 +131,6 @@ def main_page(ctrl=False):
         line += '<br><div id="{name}" style=" width:1000px;"></div>'.format(name=name)
     line += gettimestamp() + "<br><br>"
 
-
     current = logg.get_current_values_formatted()
     if 'ControlState:ACTIVE' in current:
         current_control_state = 'ACTIVE'
@@ -145,12 +144,12 @@ def main_page(ctrl=False):
     if ctrl:
         for relay in config.relay_items:
             line += '<a href="{cp}/TR?r={n}">Toggle {r}</a></br>'.\
-                format(cp=current_path, n=relay['name'], r=relay['name'])
+                format(cp=current_path, n=relay.name, r=relay.name)
         line += '<br><br>'
         for relay in config.timer_items:
-            q = tank.get_relay_query(relay['name'])
+            q = tank.get_relay_query(relay.name)
             line += '<a href="{cp}/setr{q}">Set {r} Timings</a></br>'.\
-                format(cp=current_path, q=q, r=relay['name'])
+                format(cp=current_path, q=q, r=relay.name)
     line += '</br>'
 #    line += "Relay 3 "+tank_relayController.get_relay_state_str(2)+"<br>"
 #    line += "Relay 4 "+tank_relayController.get_relay_state_str(3)+"<br><br>"
@@ -163,9 +162,11 @@ def main_page(ctrl=False):
     line += '<br><br><a href="/LOG">Temp Log</a></br><br>'
     if ctrl:
         if 'OFF' in current_control_state:
-            line += '<br><br><a href="/ON">TURN ON</a></br><br>'
+            line += '<br><a href="/ON">TURN ON</a></br>'
         else:
-            line += '<br><br><a href="/OFF">TURN OFF</a></br><br>'
+            line += '<br><a href="/OFF">TURN OFF</a></br>'
+    if ctrl:
+        line += '<br><a href="/otocinclus/configure">configure</a></br>'
     line += '</body>\n'
     return line
 
@@ -205,6 +206,8 @@ def view(ctrl=False):
 
 @app.route("/")
 def rootview():
+    global current_path
+    current_path = '/'
     return view(False)
     # global prev_count
     # try:
@@ -353,15 +356,45 @@ def log():
 
 @app.route("/OFF")
 def turn_off():
-    tank.set_control_state('OFF')
+    config.control_state = 'OFF'
     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
 
 @app.route("/ON")
 def turn_on():
-    tank.set_control_state('ACTIVE')
+    config.control_state = 'ACTIVE'
     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 
+
+@app.route("/otocinclus/configure", methods=['GET'])
+def configure_view():
+    o = ['<!DOCTYPE html><html lang="en"><body><form action="." method="POST">']
+
+    for section, values in config.configurable_items:
+        vals = str.split(values, ',')
+        name = cfg.Config()._config.get(section, 'name')
+        o.append("<h1>{t}</h1>".format(t=name))
+        for v in vals:
+            n = "{s}_{v}".format(s=section, v=v)
+            o.append('{f}: <input type="text" name="{name}" value="{v}"><br>'.
+                     format(f=v, name=n, v=cfg.Config()._config.get(section, v)))
+
+    o.append('<input type="submit" name="my-form" value="Send">')
+    o.append("""</form></body></html>""")
+    return ''.join(o)
+
+
+@app.route('/otocinclus/', methods=['POST'])
+def my_form_post():
+    data = []
+    for section, values in config.configurable_items:
+        vals = str.split(values, ',')
+        for v in vals:
+            n = "{s}_{v}".format(s=section, v=v)
+            new_value = request.form[n]
+            data.append((section, v, new_value))
+    config.set_config_data(data)
+    return view(True)
 
 if __name__ == "__main__":
         config = cfg.Config()

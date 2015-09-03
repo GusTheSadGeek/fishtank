@@ -9,6 +9,7 @@ sensor and a Raspberry Pi.  Imperial and Metric measurements are available
 import debug
 import time
 import math
+import logging
 
 if debug.DIST_TEST == 0:
     import RPi.GPIO as GPIO
@@ -59,13 +60,17 @@ class Measurement(object):
             GPIO.output(self.trig_pin, True)
             time.sleep(0.00001)
             GPIO.output(self.trig_pin, False)
-            while GPIO.input(self.echo_pin) == 0:
+            t = time.time()+2
+            while (GPIO.input(self.echo_pin) == 0) and (t > sonar_signal_off):
                 sonar_signal_off = time.time()
-            while GPIO.input(self.echo_pin) == 1:
+            while (GPIO.input(self.echo_pin) == 1) and (t > sonar_signal_on):
                 sonar_signal_on = time.time()
-            time_passed = sonar_signal_on - sonar_signal_off
-            distance_cm = time_passed * ((speed_of_sound * 100) / 2)
-            sample.append(distance_cm)
+            if t > time.time():
+                time_passed = sonar_signal_on - sonar_signal_off
+                distance_cm = time_passed * ((speed_of_sound * 100) / 2)
+                sample.append(distance_cm)
+            else:
+                logging.warning("Distance sensor took too long")
             # Only cleanup the pins used to prevent clobbering any others in use by the program
             GPIO.cleanup(self.trig_pin)
             GPIO.cleanup(self.echo_pin)

@@ -7,14 +7,12 @@ import datetime
 import tank
 import logging
 import logg
-import cfg
 
 
 class TempSensor(tank.Ticker):
     def __init__(self, config):
         super(TempSensor, self).__init__()
-        self._sensor_file = config[cfg.ITEM_SENSOR]
-        self._name = config[cfg.ITEM_NAME]
+        self.config = config
         self._current_temp = 0
         self._next_read_time = time.time()
         self._logger = logg.TankLog()
@@ -34,7 +32,7 @@ class TempSensor(tank.Ticker):
             m1 *= -1
             m1 += 15
         d = m1 * 0.1
-        if self._name.startswith('tank'):
+        if self.config.name.startswith('tank'):
             return 21.5 + d
         else:
             return 24.5 + d
@@ -68,17 +66,17 @@ class TempSensor(tank.Ticker):
         if now >= self._next_read_time:
             self._read_temp()
             self._next_read_time = self.time_next_action()
-            logging.info("{s} temp {t}".format(s=self.name, t=self._current_temp))
-            self._logger.log_value(self.name, "{temp:6.3f}".format(temp=self._current_temp))
+            logging.info("{s} temp {t}".format(s=self.config.name, t=self._current_temp))
+            self._logger.log_value(self.config.name, "{temp:6.3f}".format(temp=self._current_temp))
 
     def _get_temp_raw(self):
         if debug.TEMP_TEST == 0:
             try:
-                with open(self._sensor_file, 'r') as f:
+                with open(self.config.sensor_file, 'r') as f:
                     lines = f.readlines()
             except IOError:
                 lines = None
-                logging.error("Failed to read sensor {f}".format(f=self._sensor_file))
+                logging.error("Failed to read sensor {f}".format(f=self.config.sensor_file))
                 pass
         else:
             lines = [

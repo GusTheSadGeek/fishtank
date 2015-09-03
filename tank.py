@@ -1,7 +1,6 @@
 
 class Ticker(object):
     def __init__(self):
-        self._name = ''
         self._action_interval = 120
 
     def init(self):
@@ -10,19 +9,19 @@ class Ticker(object):
     def tick(self):
         pass
 
-    @property
-    def name(self):
-        return self._name
-
-    def time_next_action(self):
+    def time_next_action(self, interval=None):
+        if interval is None:
+            interval = self._action_interval
         now = datetime.datetime.now()
         secs_since_hour = (now.minute * 60) + now.second
         i = 0
         while i < secs_since_hour:
-            i += self._action_interval
+            i += interval
         r = time.time() + i - secs_since_hour
         return r
 
+
+import traceback
 import logging
 import os
 import time
@@ -36,42 +35,6 @@ import datetime
 
 comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
-control_state_file = "/var/log/tank/control_state.txt"
-
-
-
-_general_control = 'OFF'
-
-def general_control():
-    return _general_control
-
-def get_control_state():
-    global _general_control
-    if os.path.exists(control_state_file):
-        with open(control_state_file, 'r') as f:
-            content = f.read()
-            if 'ACTIVE' in content:
-                _general_control = 'ACTIVE'
-            else:
-                _general_control = 'OFF'
-
-get_control_state()
-
-def write_control_state():
-    if _general_control is not None:
-        with open(control_state_file, 'w') as f:
-            f.write("{state}\n".format(state=_general_control))
-
-
-def set_control_state(new_state):
-    if 'OFF' in new_state:
-        control = 'OFF'
-    else:
-        control = 'ACTIVE'
-    while os.path.exists(comms_file):
-        time.sleep(1)
-    with open(comms_file, 'w') as f:
-        f.write("control {control} \n".format(control=control))
 
 
 def setup_log():
@@ -126,7 +89,6 @@ def get_relay_state_str(name):
 
 
 def check_comms():
-    global _general_control
     if os.path.exists(comms_file):
         with open(comms_file, 'r') as f:
             data = f.read().split('\n')
@@ -134,24 +96,27 @@ def check_comms():
         config = cfg.Config()
 
         fields = data[0].split(' ')
-        if 'control' in fields[0]:
-            if 'OFF' in fields[1]:
-                _general_control = 'OFF'
-            else:
-                _general_control = 'ACTIVE'
-            write_control_state()
+        # if 'control' in fields[0]:
+        #     if 'OFF' in fields[1]:
+        #         config.control_state = 'OFF'
+        #     else:
+        #         config.control_state = 'ACTIVE'
+
+        # if 'configure' in fields[0]:
+        #     config.water_height = fields[1]
+        #     config.water_temp = fields[2]
 
         if 'togglerelay' in fields[0]:
             relay = fields[1]
             for r in config.relay_items:
-                if r[cfg.ITEM_NAME] == relay:
-                    r[cfg.ITEM_OBJECT].toggle()
+                if r.name == relay:
+                    r.object.toggle()
 
         if 'setsched' in fields[0]:
             timername = fields[1]
             for timr in config.timer_items:
-                if timr[cfg.ITEM_NAME] == timername:
-                    timr[cfg.ITEM_OBJECT].new_schedule(
+                if timr.name == timername:
+                    timr.object.new_schedule(
                         fields[2],
                         fields[3],
                         fields[4],
@@ -163,29 +128,43 @@ def check_comms():
 
 def main():
     setup_log()
-    logging.info("STARTED")
-    tank_logger = logg.TankLog()
-    get_control_state()
+    try:
+        logging.info("STARTED")
+        tank_logger = logg.TankLog()
 
-    logging.info("Current control state = {s}".format(s=general_control))
+        config = cfg.Config()
 
-    config = cfg.Config()
+        logging.info("Current control state = {s}".format(s=config.control_state))
 
-    tank_logger.init()
-    for item in config.items:
-        if item is not None:
-            if cfg.ITEM_OBJECT in item:
-                item[cfg.ITEM_OBJECT].init()
-
-    print ("TANK Monitor Running....")
-    while True:
-        time.sleep(5)
-        check_comms()
+        tank_logger.init()
         for item in config.items:
             if item is not None:
-                if cfg.ITEM_OBJECT in item:
-                    item[cfg.ITEM_OBJECT].tick()
-        tank_logger.tick()
+                if item.object is not None:
+                    item.object.init()
+
+        print ("TANK Monitor Running....")
+        while True:
+            time.sleep(5)
+            try:
+                config.tick()
+                check_comms()
+                for item in config.items:
+                    if item is not None:
+                        if item.object is not None:
+                            item.object.tick()
+                tank_logger.tick()
+
+            except Exception as e:
+                print e
+                print traceback.format_exc()
+                logging.critical(e)
+                logging.critical(traceback.format_exc())
+
+    except Exception as e:
+        print e
+        print traceback.format_exc()
+        logging.critical(e)
+        logging.critical(traceback.format_exc())
 
 
 if __name__ == '__main__':

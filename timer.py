@@ -2,7 +2,6 @@
 import datetime
 import logging
 import tank
-import cfg
 
 
 class Schedule:
@@ -73,9 +72,9 @@ class Schedule:
 class Timer(tank.Ticker):
     def __init__(self, config):
         super(Timer, self).__init__()
-        self._name = config[cfg.ITEM_NAME]
+        self.config = config
         self._current_state = False
-        filename = (self.name+'.sched').replace(' ', '_')
+        filename = (self.config.name+'.sched').replace(' ', '_')
         self.schedule = Schedule(filename)
 
     def init(self):
@@ -93,7 +92,7 @@ class Timer(tank.Ticker):
         state = self.schedule.current_state(day_of_week, seconds_since_midnight)
 
         if state != self._current_state:
-            logging.info('{name} State changing to {s}'.format(name=self.name, s=state))
+            logging.info('{name} State changing to {s}'.format(name=self.config.name, s=state))
             self._current_state = state
 
     @property
