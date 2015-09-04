@@ -92,15 +92,15 @@ class ConfigSection(object):
         return self.trygetint(ITEM_PIN)
 
     @property
-    def trigpin(self):
+    def trig_pin(self):
         return self.trygetint(ITEM_TRIGPIN)
 
     @property
-    def echopin(self):
+    def echo_pin(self):
         return self.trygetint(ITEM_ECHOPIN)
 
     @property
-    def tankdepth(self):
+    def tank_depth(self):
         return self.trygetfloat(ITEM_TANKDEPTH)
 
     @property
@@ -221,7 +221,7 @@ class Config(object):
 
     @property
     def control_state(self):
-        return self._config.get('general', ITEM_CONTROLSTATE, "OFF")
+        return self._config.get('general', ITEM_CONTROLSTATE)
 
     @control_state.setter
     def control_state(self, new_state):
@@ -304,7 +304,7 @@ class Config(object):
         if not self._config.has_section('general'):
             self._config.add_section('general')
         if not self._config.has_option('general', ITEM_CONTROLSTATE):
-            self._config.set('general', ITEM_CONTROLSTATE, 'OFF')
+            self._config.set('general', ITEM_CONTROLSTATE)
             self.save_config()
 
     def parse_config(self):

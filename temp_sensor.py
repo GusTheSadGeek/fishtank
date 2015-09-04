@@ -72,7 +72,7 @@ class TempSensor(tank.Ticker):
     def _get_temp_raw(self):
         if debug.TEMP_TEST == 0:
             try:
-                with open(self.config.sensor_file, 'r') as f:
+                with open(self.config.sensor, 'r') as f:
                     lines = f.readlines()
             except IOError:
                 lines = None
