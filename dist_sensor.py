@@ -84,6 +84,8 @@ class DistSensor(tank.Ticker):
             # If tank depth is defined then give a water depth
             if self.config.tank_depth is not None:
                 water_depth = value.depth_metric(raw_distance, self.config.tank_depth)
+                if water_depth < 0:
+                    water_depth = 0.0
                 self._current_dist = water_depth
             else:
                 # otherwise give a distance to water surface
