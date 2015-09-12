@@ -78,6 +78,7 @@ class DistSensor(tank.Ticker):
         else:
             round_to = 1
             temperature = 20  # TODO
+            self._error_count = 0
             value = sensor.Measurement(self.config.trig_pin, self.config.echo_pin, temperature, 'metric', round_to)
             raw_distance = value.raw_distance()
 
@@ -90,4 +91,5 @@ class DistSensor(tank.Ticker):
             else:
                 # otherwise give a distance to water surface
                 self._current_dist = raw_distance
-            logging.info("{x}".format(x=self._current_dist))
+            # logging.info("{x}".format(x=self._current_dist))
+

@@ -5,6 +5,7 @@ import temp_sensor
 import graph
 import dist_sensor
 import os
+import logging
 
 RELAY_TYPE = 0
 TIMER_TYPE = 1
@@ -16,6 +17,7 @@ UNKNOWN_TYPE = 99
 # General
 ITEM_CONTROLSTATE = 'controlstate'
 ITEM_LOGINTERVAL = 'log_interval'
+ITEM_LOGLEVEL = 'loglevel'
 
 # items
 ITEM_NAME = 'name'
@@ -214,6 +216,10 @@ class Config(object):
             return self._config.get(section, name)
         else:
             return default
+
+    @property
+    def log_level(self):
+        return self.trygetint('general', ITEM_LOGLEVEL, logging.WARNING)
 
     @property
     def log_interval(self):

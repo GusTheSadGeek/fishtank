@@ -36,6 +36,8 @@ import datetime
 comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
 
+loglevel = logging.WARNING
+
 
 def setup_log():
     default_log_dir = r'/var/log/tank/'
@@ -44,8 +46,15 @@ def setup_log():
     if not os.path.exists(default_log_dir):
         os.makedirs(default_log_dir)
 
-    logging.basicConfig(filename=default_logfile, level=logging.DEBUG,
+    logging.basicConfig(filename=default_logfile, level=loglevel,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+
+
+def set_log_level():
+    global loglevel
+    if loglevel != cfg.Config().log_level():
+        loglevel = cfg.Config().log_level()
+        setup_log()
 
 
 def toggle_relay(name):
@@ -128,13 +137,14 @@ def check_comms():
 
 def main():
     setup_log()
+    error_count = 0
     try:
-        logging.info("STARTED")
+        logging.warning("STARTED")
         tank_logger = logg.TankLog()
 
         config = cfg.Config()
 
-        logging.info("Current control state = {s}".format(s=config.control_state))
+        logging.warning("Current control state = {s}".format(s=config.control_state))
 
         tank_logger.init()
         for item in config.items:
@@ -144,6 +154,7 @@ def main():
 
         print ("TANK Monitor Running....")
         while True:
+            set_log_level()  #  Only does anything if the log level has been adjusted
             time.sleep(5)
             try:
                 config.tick()
@@ -153,18 +164,31 @@ def main():
                         if item.object is not None:
                             item.object.tick()
                 tank_logger.tick()
-
-            except Exception as e:
+                if error_count > 0:
+                    error_count -= 1
+            except RuntimeError as e:
+                error_count += 10
                 print e
                 print traceback.format_exc()
                 logging.critical(e)
                 logging.critical(traceback.format_exc())
+            except Exception as e:
+                error_count += 1
+                print e
+                print traceback.format_exc()
+                logging.critical(e)
+                logging.critical(traceback.format_exc())
+            if error_count > 30:
+                logging.fatal('Error Count > 30 - rebooting')
+                time.sleep(1)
+                os.system('reboot')
 
     except Exception as e:
         print e
         print traceback.format_exc()
-        logging.critical(e)
-        logging.critical(traceback.format_exc())
+        logging.fatal(e)
+        logging.fatal(traceback.format_exc())
+        logging.fatal('PROGRAM EXITING !!!!')
 
 
 if __name__ == '__main__':
