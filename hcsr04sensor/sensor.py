@@ -129,7 +129,7 @@ class Measurement(object):
         GPIO.cleanup(self.echo_pin)
         GPIO.remove_event_detect(self.echo_pin)
         sorted_sample = sorted(sample)
-        print sorted_sample
+        # print sorted_sample
         return sorted_sample[5]
 
     def sig_callback(self, pin):

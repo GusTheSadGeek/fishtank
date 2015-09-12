@@ -52,8 +52,8 @@ def setup_log():
 
 def set_log_level():
     global loglevel
-    if loglevel != cfg.Config().log_level():
-        loglevel = cfg.Config().log_level()
+    if loglevel != cfg.Config().log_level:
+        loglevel = cfg.Config().log_level
         setup_log()
 
 
