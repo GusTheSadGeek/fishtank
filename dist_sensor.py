@@ -92,4 +92,3 @@ class DistSensor(tank.Ticker):
                 # otherwise give a distance to water surface
                 self._current_dist = raw_distance
             # logging.info("{x}".format(x=self._current_dist))
-

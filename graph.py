@@ -1,5 +1,4 @@
 import tank
-import cfg
 
 
 class Graph(tank.Ticker):

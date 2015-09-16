@@ -218,6 +218,10 @@ class Config(object):
             return default
 
     @property
+    def config(self):
+        return self._config
+
+    @property
     def log_level(self):
         return self.trygetint('general', ITEM_LOGLEVEL, logging.WARNING)
 

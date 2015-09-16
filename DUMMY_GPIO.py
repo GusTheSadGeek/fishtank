@@ -47,8 +47,8 @@ def add_event_detect(a, b):
 
 def add_event_callback(a, b):
     global _sink
-    _sink = str(a)+str(b)
+    _sink = str(a) + str(b)
+
 
 def remove_event_detect(a):
     return a
-

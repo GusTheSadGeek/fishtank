@@ -372,12 +372,12 @@ def configure_view():
 
     for section, values in config.configurable_items:
         vals = str.split(values, ',')
-        name = cfg.Config()._config.get(section, 'name')
+        name = cfg.Config().config.get(section, 'name')
         o.append("<h1>{t}</h1>".format(t=name))
         for v in vals:
             n = "{s}_{v}".format(s=section, v=v)
             o.append('{f}: <input type="text" name="{name}" value="{v}"><br>'.
-                     format(f=v, name=n, v=cfg.Config()._config.get(section, v)))
+                     format(f=v, name=n, v=cfg.Config().config.get(section, v)))
 
     o.append('<input type="submit" name="my-form" value="Send">')
     o.append("""</form></body></html>""")

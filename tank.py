@@ -31,7 +31,7 @@ import cfg
 import logg
 import timer
 import datetime
-
+import watchdog
 
 comms_file = "/mnt/ram/relay_control.txt"
 status_file = "/mnt/ram/relay_status.txt"
@@ -137,6 +137,7 @@ def check_comms():
 
 def main():
     setup_log()
+    watchdog.start_watchdog()
     error_count = 0
     try:
         logging.warning("STARTED")
@@ -154,16 +155,20 @@ def main():
 
         print ("TANK Monitor Running....")
         while True:
-            set_log_level()  #  Only does anything if the log level has been adjusted
+            set_log_level()  # Only does anything if the log level has been adjusted
             time.sleep(5)
+            watchdog.still_alive()
             try:
                 config.tick()
                 check_comms()
                 for item in config.items:
                     if item is not None:
                         if item.object is not None:
+                            watchdog.set_debug_info(item.object.config.name)
                             item.object.tick()
+                watchdog.set_debug_info('tank_logger')
                 tank_logger.tick()
+                watchdog.set_debug_info('None')
                 if error_count > 0:
                     error_count -= 1
             except RuntimeError as e:
@@ -182,6 +187,13 @@ def main():
                 logging.fatal('Error Count > 30 - rebooting')
                 time.sleep(1)
                 os.system('reboot')
+    except KeyboardInterrupt as e:
+        watchdog.stop_watchdog()
+        print e
+        print traceback.format_exc()
+        logging.fatal(e)
+        logging.fatal(traceback.format_exc())
+        logging.fatal('PROGRAM EXITING - Ctrl C')
 
     except Exception as e:
         print e
