@@ -36,6 +36,9 @@ ITEM_CONTROLLEDBY_OR = 'controlledbyor'
 ITEM_CONTROLS = 'controls'
 ITEM_SENSOR = 'sensor'
 ITEM_GRAPH = 'graph'
+ITEM_GRAPHTYPE = 'type'
+ITEM_GRAPHCOLOURS = 'colours'
+ITEM_GPOS = 'gpos'
 ITEM_LOGCOL = 'logcol'
 ITEM_HEIGHT = 'height'
 ITEM_SCALE = 'scale'
@@ -144,6 +147,18 @@ class ConfigSection(object):
     @property
     def graph(self):
         return self.tryget(ITEM_GRAPH)
+
+    @property
+    def graph_type(self):
+        return self.tryget(ITEM_GRAPHTYPE)
+
+    @property
+    def graph_colours(self):
+        return self.tryget(ITEM_GRAPHCOLOURS)
+
+    @property
+    def gpos(self):
+        return self.tryget(ITEM_GPOS)
 
     @property
     def logcol(self):

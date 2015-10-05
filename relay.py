@@ -80,20 +80,14 @@ class Relay(tank.Ticker):
                 self.set_state(True)
             if new_state == -1:
                 self.set_state(False)
-        if self.current_state == Relay.ON or self.current_state == Relay.FON:
-            new_val = 5
-        else:
-            new_val = 0
-        self.avg.append(new_val)
-        if len(self.avg) > 720:
-            old_val = self.avg.pop(0)
-            self.moving_total -= old_val
-        self.moving_total += new_val
 
-        avg = (self.moving_total / (len(self.avg)*5)) * 100
+        if self.current_state == Relay.ON or self.current_state == Relay.FON:
+            data_val = 1
+        else:
+            data_val = 0
 
         self._logger.log_value(self.config.name,
-                               "{avg:4.1f}".format(avg=avg),
+                               "{val}".format(val=data_val),
                                "{current}".format(current=self.state_to_string(self.current_state)))
 
     def turn_relay_on(self):

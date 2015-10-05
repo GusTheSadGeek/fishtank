@@ -35,8 +35,8 @@ class LogStuff(object):
             self._last_changed = 0
             self._log = {}
 
-    def get_temp_log(self, days, graph_type):
-        key = graph_type+str(days)
+    def get_temp_log(self, days, graph_type, span):
+        key = graph_type+str(days)+'_'+str(span)
 
         last_changed = logg.log_last_changed()
         if last_changed != self._last_changed:
@@ -45,7 +45,11 @@ class LogStuff(object):
         if key not in self._log:
             self._last_changed = last_changed
 
-            logdata, mn, mx, sensor_names = logg.get_temp_log(days, graph_type)
+            logdata, mn, mx, sensor_names = logg.get_temp_log(days, graph_type, span)
+            if mn==mx:
+                if mn < 2:
+                    mn = 0
+                    mx = 1
             new_log = []
             for e in logdata:
                 fields = e.split(',')
@@ -63,9 +67,9 @@ def gettimestamp():
     return output
 
 
-def graph(days, graphobj):
+def graph(days, graphobj, span):
     chart_name = 'linechart_'+graphobj.name
-    b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graphobj.name)
+    b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graphobj.name, span)
 
     a = [
         """<script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -94,13 +98,17 @@ def graph(days, graphobj):
 
     scale = int(graphobj.scale)
 
+    colours = ''
+    if graphobj.graph_colours is not None:
+       colours = """colors: """+graphobj.graph_colours+""","""
+
     c1 = """
       ]);
       var options = {
-        chartArea:{left:40,top:50},
+        chartArea:{left:40,top:10,width:"80%",height:"100%"},
         chart: {
           title: 'Temps',
-          subtitle: 'in Centigrade',
+          subtitle: 'in Centigrade'
         },
         vAxis: {
           title:'"""+str(graphobj.yaxis)+"""',
@@ -111,9 +119,10 @@ def graph(days, graphobj):
           ticks: [""" + ','.join(map(str, range(mn, mx+1, scale))) + """]
         },
         width: 1000,
+        """ + colours + """
         height: """+str(graphobj.height)+"""
       };
-      var chart = new google.visualization.LineChart(document.getElementById('"""+chart_name+"""'));
+      var chart = new google.visualization.""" + graphobj.graph_type + """(document.getElementById('"""+chart_name+"""'));
       chart.draw(data, options);
     }
     </script>
@@ -121,11 +130,17 @@ def graph(days, graphobj):
     return '\n'.join(a) + b + c1
 
 
-def main_page(ctrl=False):
-    line = '<a href="{cp}?d=9999"> All </a><br>'.format(cp=current_path)
-    line += '<a href="{cp}?d=30"> Month </a><br>'.format(cp=current_path)
-    line += '<a href="{cp}?d=7"> Week </a><br>'.format(cp=current_path)
-    line += '<a href="{cp}?d=1"> Day </a><br>'.format(cp=current_path)
+def main_page(ctrl=False, day_count=7, span=9999):
+    line  = '<a href="{cp}?d=9999&s=9999"> All </a><br>'.format(cp=current_path)
+    line += '<a href="{cp}?d=30&s={s}"> Month </a><br>'.format(cp=current_path, s=span)
+    line += '<a href="{cp}?d=7&s={s}"> Week </a><br>'.format(cp=current_path, s=span)
+    line += '<a href="{cp}?d=1&s={s}"> Day </a><br><br>'.format(cp=current_path, s=span)
+
+    line += '<a href="{cp}?d={d}&s=9999"> All </a><br>'.format(cp=current_path, d=day_count)
+    line += '<a href="{cp}?d={d}&s=1"> 1 Day </a><br>'.format(cp=current_path, d=day_count)
+    line += '<a href="{cp}?d={d}&s=2"> 2 Days </a><br>'.format(cp=current_path, d=day_count)
+    line += '<a href="{cp}?d={d}&s=3"> 3 Days </a><br>'.format(cp=current_path, d=day_count)
+
     for chart in config.graphs_types:
         name = "linechart_{chart}".format(chart=chart)
         line += '<br><div id="{name}" style=" width:1000px;"></div>'.format(name=name)
@@ -186,18 +201,23 @@ def view(ctrl=False):
                 day_count = 30
         prev_count = day_count
 
+        try:
+            span = int(request.args.get('s'))
+        except (ValueError, TypeError):
+            span = 99999
+
         charts = []
         for g in config.graph_items:
-            q = graph(day_count, g)
+            q = graph(day_count, g, span)
             charts.append(q)
 
             #
             # for gt cfg.graphs_items:
             #     if gt[tank_cfg.ITEM_GRAPH] == gt:
 
-        line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url={cp}" />\n{graph}</head>\n<body>\n'.\
+        line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url={cp}" />\n</head>\n<body>{graph}\n'.\
             format(cp=current_path, graph=' '.join(charts))
-        line += main_page(ctrl)
+        line += main_page(ctrl, day_count, span)
     except Exception as e:
         print e
         print traceback.format_exc()

@@ -125,7 +125,10 @@ class GetLog(object):
         # q = os.path.getmtime(value_log_file)
         return os.path.getmtime(value_log_file)
 
-    def get_log(self, days, graph_type):
+    def get_log(self, days, graph_type, span=9999):
+
+        start_day = days - span
+
         # if mydebug.TEMP_TEST == 0:
         file_name = value_log_file
         # else:
@@ -160,14 +163,15 @@ class GetLog(object):
                         if last_day is not None:
                             day_count += 1
                         last_day = day
-                    for lc in log_cols:
-                        if len(fields) > lc+4:
-                            value = fields[lc+4]
-                        else:
-                            value = "0.0"
-                        self.update_min_max_values(float(value))
-                        retline.append(value)
-                    ret_lines.append(','.join(retline))
+                    if day_count >= start_day:
+                        for lc in log_cols:
+                            if len(fields) > lc+4:
+                                value = fields[lc+4]
+                            else:
+                                value = "0.0"
+                            self.update_min_max_values(float(value))
+                            retline.append(value)
+                        ret_lines.append(','.join(retline))
             except IndexError:
                 logging.error("Index error in log file {line}".format(line=log[index]))
             except ValueError:
@@ -218,10 +222,10 @@ def log_last_changed():
     return gtl.last_changed()
 
 
-def get_temp_log(days, graph_type):
+def get_temp_log(days, graph_type, span):
     gtl = GetLog()
 
-    log, sensor_names = gtl.get_log(days, graph_type)
+    log, sensor_names = gtl.get_log(days, graph_type, span)
 
     # sensor_names = []
     # temps = GetTempLog().get_current()
