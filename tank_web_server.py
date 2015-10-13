@@ -36,14 +36,14 @@ class LogStuff(object):
             self._log = {}
 
     def get_temp_log(self, days, graph_type, span):
-        key = graph_type+str(days)+'_'+str(span)
+#        key = graph_type+str(days)+'_'+str(span)
 
-        last_changed = logg.log_last_changed()
-        if last_changed != self._last_changed:
-            self._log = {}
+#        last_changed = logg.log_last_changed()
+#        if last_changed != self._last_changed:
+#            self._log = {}
 
-        if key not in self._log:
-            self._last_changed = last_changed
+#        if key not in self._log:
+#            self._last_changed = last_changed
 
             logdata, mn, mx, sensor_names = logg.get_temp_log(days, graph_type, span)
             if mn==mx:
@@ -53,12 +53,14 @@ class LogStuff(object):
             new_log = []
             for e in logdata:
                 fields = e.split(',')
-                if len(fields) > 5:
-                    new_log.append("[new Date({a}),{b}]".format(a=','.join(fields[0:5]), b=','.join(fields[5:])))
-            self._log[key] = ','.join(new_log), mn, mx, sensor_names
-            return self._log[key]
-        else:
-            return self._log[key]
+                if len(fields) > 1:
+#                if len(fields) > 6:
+                    new_log.append("[d({a}),{b}]".format(a=fields[0], b=','.join(fields[1:])))
+#                    new_log.append("[new Date({a}),{b}]".format(a=','.join(fields[0:6]), b=','.join(fields[6:])))
+#            self._log[key] = ','.join(new_log), mn, mx, sensor_names
+            return ','.join(new_log), mn, mx, sensor_names
+ #       else:
+  #          return self._log[key]
 
 
 def gettimestamp():
@@ -76,6 +78,13 @@ def graph(days, graphobj, span):
     <script type="text/javascript">
     google.load('visualization', '1.1', {packages: ['corechart', 'line']});
     google.setOnLoadCallback(drawChart);
+    function d(n){
+        if (n>1000000){
+            basetime = n;
+            n=0;
+            }
+        return new Date((basetime+n)*1000);
+    }
     function drawChart() {
       var data = new google.visualization.DataTable();
       data.addColumn('datetime', 'Hours');

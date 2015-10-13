@@ -24,18 +24,22 @@ class TempSensor(tank.Ticker):
         """
         Provides Test Values
         """
-        if m is None:
-            now = datetime.datetime.now()
-            m = now.minute
-        m1 = m % 15
-        if (m % 30) > 14:
-            m1 *= -1
-            m1 += 15
-        d = m1 * 0.1
         if self.config.name.startswith('tank'):
-            return 21.5 + d
+            return 21.5
         else:
-            return 24.5 + d
+            return 24.5
+        # if m is None:
+        #     now = datetime.datetime.now()
+        #     m = now.minute
+        # m1 = m % 15
+        # if (m % 30) > 14:
+        #     m1 *= -1
+        #     m1 += 15
+        # d = m1 * 0.1
+        # if self.config.name.startswith('tank'):
+        #     return 21.5 + d
+        # else:
+        #     return 24.5 + d
 
     @property
     def current_value(self):

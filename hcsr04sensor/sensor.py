@@ -72,9 +72,9 @@ class Measurement(object):
         for distance_reading in range(11):
 
             GPIO.output(self.trig_pin, GPIO.LOW)
-            time.sleep(0.3)
+            time.sleep(1.0)
             GPIO.output(self.trig_pin, GPIO.HIGH)
-            time.sleep(0.00001)
+            time.sleep(0.001)
             GPIO.output(self.trig_pin, GPIO.LOW)
 
             self.myevent.clear()

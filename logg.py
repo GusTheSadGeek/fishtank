@@ -12,6 +12,8 @@ import tank
 value_log_file = '/var/log/tank/temps.txt'
 current_value_file = '/mnt/ram/current_temps.txt'
 
+seconds_in_day = (3600 * 24)
+
 
 def setup_log():
     default_log_dir = r'/var/log/tank/'
@@ -23,6 +25,11 @@ def setup_log():
     logging.basicConfig(filename=default_logfile, level=logging.DEBUG,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
+def time_now_text():
+    now = datetime.datetime.now()
+    date = "{a},{b},{c},{d},{e}". \
+        format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
+    return date
 
 class TankLog(tank.Ticker):
     """
@@ -37,6 +44,7 @@ class TankLog(tank.Ticker):
             self._first_time = False
             self.lines = ''
             self.current_log_values = {}
+            self.previous_log_values = {}
             self.current_values = {}
             self.cols = {}
             self.tna = self.time_next_action(cfg.Config().log_interval)
@@ -55,6 +63,31 @@ class TankLog(tank.Ticker):
         self.current_values[key] = str(current)
         self.current_log_values[key] = str(logvalue)
 
+
+
+
+    def update_log_file(self):
+        logging.info("logging")
+        now  = str(int(time.time()))
+#        now = time_now_text()
+        temps_output = []
+        for col in range(10):
+            if col in self.cols:
+                temps_output.append("{val}".format(val=self.current_log_values[self.cols[col]]))
+
+        # date = "{a},{b},{c},{d},{e}". \
+        #     format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
+
+        output2 = "{date:s},{temps:s}\n". \
+            format(date=now, temps=','.join(temps_output))
+
+        try:
+            with open(value_log_file, 'a') as f:
+                f.write(output2)
+        except IOError as e:
+            logging.error(str(e))
+            logging.error("Error writing to temp file {f}".format(value_log_file))
+
     def tick(self):
         try:
             with open(current_value_file, 'w') as f:
@@ -67,28 +100,42 @@ class TankLog(tank.Ticker):
             logging.error(str(e))
             logging.error("Error writing to temp file {f}".format(current_value_file))
 
-        if self.tna < time.time():
-            logging.info("logging")
-            now = datetime.datetime.now()
-            temps_output = []
-            for col in range(10):
-                if col in self.cols:
-                    temps_output.append("{val}".format(val=self.current_log_values[self.cols[col]]))
+        changed = False
+        for key in self.current_log_values:
+            if key in self.previous_log_values:
+                if self.previous_log_values[key] != self.current_log_values[key]:
+                    changed = True
+                    break
+            else:
+                changed = True
+                break
+        if changed:
+            self.update_log_file()
+            for key in self.current_log_values:
+                self.previous_log_values[key] = self.current_log_values[key]
 
-            date = "{a},{b},{c},{d},{e}". \
-                format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
-
-            output2 = "{date:s},{temps:s}\n". \
-                format(date=date, temps=','.join(temps_output))
-
-            try:
-                with open(value_log_file, 'a') as f:
-                    f.write(output2)
-            except IOError as e:
-                logging.error(str(e))
-                logging.error("Error writing to temp file {f}".format(value_log_file))
-
-            self.tna = self.time_next_action(cfg.Config().log_interval)
+        # if self.tna < time.time():
+        #     logging.info("logging")
+        #     now = datetime.datetime.now()
+        #     temps_output = []
+        #     for col in range(10):
+        #         if col in self.cols:
+        #             temps_output.append("{val}".format(val=self.current_log_values[self.cols[col]]))
+        #
+        #     date = "{a},{b},{c},{d},{e}". \
+        #         format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
+        #
+        #     output2 = "{date:s},{temps:s}\n". \
+        #         format(date=date, temps=','.join(temps_output))
+        #
+        #     try:
+        #         with open(value_log_file, 'a') as f:
+        #             f.write(output2)
+        #     except IOError as e:
+        #         logging.error(str(e))
+        #         logging.error("Error writing to temp file {f}".format(value_log_file))
+        #
+        #     self.tna = self.time_next_action(cfg.Config().log_interval)
 
 
 class GetLog(object):
@@ -125,7 +172,84 @@ class GetLog(object):
         # q = os.path.getmtime(value_log_file)
         return os.path.getmtime(value_log_file)
 
+
     def get_log(self, days, graph_type, span=9999):
+        now = int(time.time())
+        start_ts = int(time.time()) - (days * seconds_in_day)
+        end_ts = start_ts + (span * seconds_in_day)
+
+        file_name = value_log_file
+        try:
+            with open(file_name, 'r') as f:
+                log = f.read().split('\n')
+        except IOError:
+            log = "error"
+
+        config = cfg.Config()
+        # Which log cols do we want ?
+        log_cols = []
+        sensors = []
+        for gi in config.graphed_items:
+            if graph_type is None or gi.graph == graph_type:
+                log_cols.append(gi.logcol)
+                sensors.append(gi.name)
+
+        ret_lines = []
+        prev = None
+        prev_ts = 0
+        index = 0
+        log_len = len(log)
+        delta = None
+        while index < log_len:
+            current = []
+            line = log[index].strip(',')
+            if len(line) > 5:
+                fields = line.split(',')
+                if fields[0] == '2015':
+                    n = map((lambda x: int(x)), fields[0:5])
+                    ts = int(datetime.datetime(n[0], n[1]+1, n[2], n[3], n[4]).strftime('%s'))
+                    coloffset = 4
+                else:
+                    coloffset = 0
+                    ts = int(fields[0])
+                if ts > end_ts:
+                    break
+
+                if ts >= start_ts and ts <= end_ts:
+                    for lc in log_cols:
+                        if len(fields) > lc+coloffset:
+                            value = fields[lc+coloffset]
+                        else:
+                            value = "0"
+                        self.update_min_max_values(float(value))
+                        current.append(value)
+
+                    if current != prev:
+                        if prev is not None:
+                            if (delta is not None) and (ts > (prev_ts + 301)):
+                                retline = [str(ts-delta)]
+                                retline.extend(prev)
+                                ret_lines.append(','.join(retline))
+
+                        if delta is None:
+                            retline = [str(ts+1)]
+                            delta = ts+1
+                        else:
+                            retline = [str(ts-delta+1)]
+                        retline.extend(current)
+                        ret_lines.append(','.join(retline))
+                        prev = current
+                        prev_ts = ts
+
+            index += 1
+        if prev is not None:
+            retline = str(now)+','
+            ret_lines.append(retline+','.join(prev))
+
+#        print "222222222222222 "+str(len(ret_lines))+"  "+str(startts)+"  "+str(ts)
+        return ret_lines, sensors
+
+    def get_log2(self, days, graph_type, span=9999):
 
         start_day = days - span
 
@@ -152,12 +276,13 @@ class GetLog(object):
         ret_lines = []
         day_count = 0
         last_day = None
+        prev = None
         for index in range(len(log)-1, -1, -1):
             try:
+                current = []
                 line = log[index].strip(',')
                 if len(line) > 5:
                     fields = line.split(',')
-                    retline = fields[:5]
                     day = fields[2]
                     if day != last_day:
                         if last_day is not None:
@@ -168,10 +293,27 @@ class GetLog(object):
                             if len(fields) > lc+4:
                                 value = fields[lc+4]
                             else:
-                                value = "0.0"
+                                value = "0"
                             self.update_min_max_values(float(value))
-                            retline.append(value)
-                        ret_lines.append(','.join(retline))
+                            current.append(value)
+
+                        if current != prev:
+                            if prev is None:
+                                prev = current
+                                retline = time_now_text()+',0,'
+                                ret_lines.append(retline+','.join(prev))
+                            else:
+                                retline = fields[:5]
+                                retline.append('1')
+                                retline.extend(prev)
+                                ret_lines.append(','.join(retline))
+
+                            retline = fields[:5]
+                            retline.append('0')
+                            retline.extend(current)
+                            ret_lines.append(','.join(retline))
+                            prev = current
+
             except IndexError:
                 logging.error("Index error in log file {line}".format(line=log[index]))
             except ValueError:

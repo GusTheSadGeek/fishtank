@@ -19,7 +19,7 @@ class DistSensor(tank.Ticker):
         self._current_dist = 0
         self._logger = logg.TankLog()
         self._action_interval = 120
-        self._next_read_time = self.time_next_action()
+        self._next_read_time = 0#self.time_next_action()
         if debug.TEMP_TEST != 0:
             self._current_dist = self.test_dist()
 
@@ -27,18 +27,22 @@ class DistSensor(tank.Ticker):
         """
         Provides Test Values
         """
-        if m is None:
-            now = datetime.datetime.now()
-            m = now.minute
-        m1 = m % 15
-        if (m % 30) > 14:
-            m1 *= -1
-            m1 += 15
-        d = m1
         if self.config.name.startswith('tank'):
-            return 21.5 + d
+            return 21.5
         else:
-            return 24.5 + d
+            return 24.5
+        # if m is None:
+        #     now = datetime.datetime.now()
+        #     m = now.minute
+        # m1 = m % 15
+        # if (m % 30) > 14:
+        #     m1 *= -1
+        #     m1 += 15
+        # d = m1
+        # if self.config.name.startswith('tank'):
+        #     return 21.5 + d
+        # else:
+        #     return 24.5 + d
 
     @property
     def current_value(self):
