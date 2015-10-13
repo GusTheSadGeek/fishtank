@@ -4,3 +4,9 @@ temp_sensors.conf
 .idea
 *.pyc
 *.sched
+mydebug.py
+tank.cfg
+temps.txt
+*.iml
+venv/**
+
