@@ -93,7 +93,7 @@ class Measurement(object):
         for d in sorted_sample[1:-1]:
             total += d
         mean = total/(len(sorted_sample)-2)
-        logging.warning("median = {med}   mean = {mean}".format(med=sorted_sample[5], mean=mean))
+        logging.debug("median = {med}   mean = {mean}".format(med=sorted_sample[5], mean=mean))
         return sorted_sample[5]
 
     def sig_callback(self, pin):
