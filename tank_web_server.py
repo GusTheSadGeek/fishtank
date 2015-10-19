@@ -12,6 +12,9 @@ import tank
 import debug
 import cfg
 import logg
+import time
+import logging
+import os
 
 app = Flask(__name__)
 
@@ -19,6 +22,17 @@ prog = None
 conf = []
 prev_count = 30
 current_path = '/'
+
+
+def setup_log():
+    default_log_dir = r'/var/log/tank/'
+    default_logfile = default_log_dir+r'/web.log'
+
+    if not os.path.exists(default_log_dir):
+        os.makedirs(default_log_dir)
+
+    logging.basicConfig(filename=default_logfile, level=logging.INFO,
+                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
 
 def c(n):
@@ -186,6 +200,7 @@ def main_page(ctrl=False, day_count=7, span=9999):
 
 
 def view(ctrl=False):
+    start_time = time.time()
     line = ''
     try:
         global prev_count
@@ -220,6 +235,8 @@ def view(ctrl=False):
     except Exception as e:
         print e
         print traceback.format_exc()
+    end_time = time.time()
+    logging.info(str(end_time - start_time))
     return line
 
 
@@ -416,6 +433,7 @@ def my_form_post():
     return view(True)
 
 if __name__ == "__main__":
+        setup_log()
         config = cfg.Config()
 
         graphs = config.graphs_types
