@@ -60,7 +60,7 @@ class DistSensor(tank.Ticker):
             self._get_distance()
             self._next_read_time = self.time_next_action()
             logging.info("{s} dist {t}".format(s=self.config.name, t=self._current_dist))
-            self._logger.log_value(self.config.name, "{dist:1.1f}".format(dist=self._current_dist))
+            self._logger.log_value(self.config.name, "{dist}".format(dist=int(self._current_dist)))
 
     def _get_distance(self):
         if debug.DIST_TEST != 0:
