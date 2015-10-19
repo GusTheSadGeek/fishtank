@@ -16,7 +16,7 @@ class DistSensor(tank.Ticker):
         self.config = config
         self._current_dist = 0
         self._logger = logg.TankLog()
-        self._action_interval = 120
+        self._action_interval = 300
         self._next_read_time = 0  # self.time_next_action()
         if debug.TEMP_TEST != 0:
             self._current_dist = self.test_dist()
