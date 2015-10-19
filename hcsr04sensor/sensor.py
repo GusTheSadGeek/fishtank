@@ -82,9 +82,10 @@ class Measurement(object):
             self.sonar_signal_on = None
 
             if self.myevent.wait(4):  # Wait MAX of 4 seconds for returned pulse
-                time_passed = self.sonar_signal_on - self.sonar_signal_off
-                distance_cm = time_passed * ((speed_of_sound * 100) / 2)
-                sample.append(distance_cm)
+                if self.sonar_signal_on is not None and self.sonar_signal_off is not None:
+                    time_passed = self.sonar_signal_on - self.sonar_signal_off
+                    distance_cm = time_passed * ((speed_of_sound * 100) / 2)
+                    sample.append(distance_cm)
             else:
                 logging.warning("Distance sensor took too long")
         sorted_sample = sorted(sample)

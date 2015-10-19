@@ -60,7 +60,7 @@ def graph(days, graphobj, span):
     chart_name = 'linechart_'+graphobj.name
     b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graphobj.name, span)
 
-    if graphobj.zero == 1:
+    if graphobj.zerobased == 1:
         mn = 0
 
     a = [
