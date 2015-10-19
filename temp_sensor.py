@@ -2,7 +2,6 @@
 
 import debug
 import time
-import datetime
 
 import tank
 import logging
@@ -20,7 +19,7 @@ class TempSensor(tank.Ticker):
         if debug.TEMP_TEST != 0:
             self._current_temp = self.test_temp()
 
-    def test_temp(self, m=None):
+    def test_temp(self):
         """
         Provides Test Values
         """
@@ -28,18 +27,6 @@ class TempSensor(tank.Ticker):
             return 21.5
         else:
             return 24.5
-        # if m is None:
-        #     now = datetime.datetime.now()
-        #     m = now.minute
-        # m1 = m % 15
-        # if (m % 30) > 14:
-        #     m1 *= -1
-        #     m1 += 15
-        # d = m1 * 0.1
-        # if self.config.name.startswith('tank'):
-        #     return 21.5 + d
-        # else:
-        #     return 24.5 + d
 
     @property
     def current_value(self):
@@ -71,7 +58,7 @@ class TempSensor(tank.Ticker):
             self._read_temp()
             self._next_read_time = self.time_next_action()
             logging.info("{s} temp {t}".format(s=self.config.name, t=self._current_temp))
-            self._logger.log_value(self.config.name, "{temp:6.3f}".format(temp=self._current_temp))
+            self._logger.log_value(self.config.name, "{temp:1.3f}".format(temp=self._current_temp))
 
     def _get_temp_raw(self):
         if debug.TEMP_TEST == 0:

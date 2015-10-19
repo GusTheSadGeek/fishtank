@@ -25,11 +25,13 @@ def setup_log():
     logging.basicConfig(filename=default_logfile, level=logging.DEBUG,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
+
 def time_now_text():
     now = datetime.datetime.now()
     date = "{a},{b},{c},{d},{e}". \
         format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
     return date
+
 
 class TankLog(tank.Ticker):
     """
@@ -48,7 +50,6 @@ class TankLog(tank.Ticker):
             self.current_values = {}
             self.cols = {}
             self.tna = self.time_next_action(cfg.Config().log_interval)
-#            self.tna = time.time()+10
 
     def init(self):
         for item in cfg.Config().items:
@@ -63,12 +64,9 @@ class TankLog(tank.Ticker):
         self.current_values[key] = str(current)
         self.current_log_values[key] = str(logvalue)
 
-
-
-
     def update_log_file(self):
         logging.info("logging")
-        now  = str(int(time.time()))
+        now = str(int(time.time()))
 #        now = time_now_text()
         temps_output = []
         for col in range(10):
@@ -114,29 +112,6 @@ class TankLog(tank.Ticker):
             for key in self.current_log_values:
                 self.previous_log_values[key] = self.current_log_values[key]
 
-        # if self.tna < time.time():
-        #     logging.info("logging")
-        #     now = datetime.datetime.now()
-        #     temps_output = []
-        #     for col in range(10):
-        #         if col in self.cols:
-        #             temps_output.append("{val}".format(val=self.current_log_values[self.cols[col]]))
-        #
-        #     date = "{a},{b},{c},{d},{e}". \
-        #         format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
-        #
-        #     output2 = "{date:s},{temps:s}\n". \
-        #         format(date=date, temps=','.join(temps_output))
-        #
-        #     try:
-        #         with open(value_log_file, 'a') as f:
-        #             f.write(output2)
-        #     except IOError as e:
-        #         logging.error(str(e))
-        #         logging.error("Error writing to temp file {f}".format(value_log_file))
-        #
-        #     self.tna = self.time_next_action(cfg.Config().log_interval)
-
 
 class GetLog(object):
     def __init__(self):
@@ -171,7 +146,6 @@ class GetLog(object):
     def last_changed(cls):
         # q = os.path.getmtime(value_log_file)
         return os.path.getmtime(value_log_file)
-
 
     def get_log(self, days, graph_type, span=9999):
         now = int(time.time())
@@ -215,7 +189,7 @@ class GetLog(object):
                 if ts > end_ts:
                     break
 
-                if ts >= start_ts and ts <= end_ts:
+                if start_ts <= ts <= end_ts:
                     for lc in log_cols:
                         if len(fields) > lc+coloffset:
                             value = fields[lc+coloffset]
@@ -246,7 +220,6 @@ class GetLog(object):
             retline = str(now)+','
             ret_lines.append(retline+','.join(prev))
 
-#        print "222222222222222 "+str(len(ret_lines))+"  "+str(startts)+"  "+str(ts)
         return ret_lines, sensors
 
     def get_log2(self, days, graph_type, span=9999):

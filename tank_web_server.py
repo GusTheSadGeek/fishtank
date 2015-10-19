@@ -35,32 +35,19 @@ class LogStuff(object):
             self._last_changed = 0
             self._log = {}
 
-    def get_temp_log(self, days, graph_type, span):
-#        key = graph_type+str(days)+'_'+str(span)
-
-#        last_changed = logg.log_last_changed()
-#        if last_changed != self._last_changed:
-#            self._log = {}
-
-#        if key not in self._log:
-#            self._last_changed = last_changed
-
-            logdata, mn, mx, sensor_names = logg.get_temp_log(days, graph_type, span)
-            if mn==mx:
-                if mn < 2:
-                    mn = 0
-                    mx = 1
-            new_log = []
-            for e in logdata:
-                fields = e.split(',')
-                if len(fields) > 1:
-#                if len(fields) > 6:
-                    new_log.append("[d({a}),{b}]".format(a=fields[0], b=','.join(fields[1:])))
-#                    new_log.append("[new Date({a}),{b}]".format(a=','.join(fields[0:6]), b=','.join(fields[6:])))
-#            self._log[key] = ','.join(new_log), mn, mx, sensor_names
-            return ','.join(new_log), mn, mx, sensor_names
- #       else:
-  #          return self._log[key]
+    @staticmethod
+    def get_temp_log(days, graph_type, span):
+        logdata, mn, mx, sensor_names = logg.get_temp_log(days, graph_type, span)
+        if mn == mx:
+            if mn < 2:
+                mn = 0
+                mx = 1
+        new_log = []
+        for e in logdata:
+            fields = e.split(',')
+            if len(fields) > 1:
+                new_log.append("[d({a}),{b}]".format(a=fields[0], b=','.join(fields[1:])))
+        return ','.join(new_log), mn, mx, sensor_names
 
 
 def gettimestamp():
@@ -72,6 +59,9 @@ def gettimestamp():
 def graph(days, graphobj, span):
     chart_name = 'linechart_'+graphobj.name
     b, mn, mx, sensor_names = LogStuff().get_temp_log(days, graphobj.name, span)
+
+    if graphobj.zero == 1:
+        mn = 0
 
     a = [
         """<script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -109,7 +99,7 @@ def graph(days, graphobj, span):
 
     colours = ''
     if graphobj.graph_colours is not None:
-       colours = """colors: """+graphobj.graph_colours+""","""
+        colours = """colors: """+graphobj.graph_colours+""","""
 
     c1 = """
       ]);
@@ -140,7 +130,7 @@ def graph(days, graphobj, span):
 
 
 def main_page(ctrl=False, day_count=7, span=9999):
-    line  = '<a href="{cp}?d=9999&s=9999"> All </a><br>'.format(cp=current_path)
+    line = '<a href="{cp}?d=9999&s=9999"> All </a><br>'.format(cp=current_path)
     line += '<a href="{cp}?d=30&s={s}"> Month </a><br>'.format(cp=current_path, s=span)
     line += '<a href="{cp}?d=7&s={s}"> Week </a><br>'.format(cp=current_path, s=span)
     line += '<a href="{cp}?d=1&s={s}"> Day </a><br><br>'.format(cp=current_path, s=span)
@@ -379,7 +369,7 @@ def temp():
 
 @app.route("/LOG")
 def log():
-    text, __, __, __ = logg.get_temp_log(9999, None)
+    text, __, __, __ = logg.get_temp_log(9999, None, 99999)
     return Response('<br>'.join(text), mimetype="text/html")
 
 

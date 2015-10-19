@@ -45,6 +45,7 @@ ITEM_SCALE = 'scale'
 ITEM_YAXIS = 'yaxis'
 ITEM_ALWAYSACTIVE = 'alwaysactive'
 ITEM_OBJECT = 'object'
+ITEM_ZERO = 'zero'
 
 
 class ConfigSection(object):
@@ -171,6 +172,10 @@ class ConfigSection(object):
     @property
     def scale(self):
         return self.trygetint(ITEM_SCALE)
+
+    @property
+    def zerobased(self):
+        return self.trygetint(ITEM_ZERO, 0)
 
     @property
     def yaxis(self):
