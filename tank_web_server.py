@@ -221,6 +221,7 @@ def view(ctrl=False):
             span = 99999
 
         charts = []
+        logg.prefetch(day_count, span)
         for g in config.graph_items:
             q = graph(day_count, g, span)
             charts.append(q)

@@ -113,6 +113,8 @@ class TankLog(tank.Ticker):
                 self.previous_log_values[key] = self.current_log_values[key]
 
 
+prefetch_data = []
+
 class GetLog(object):
     def __init__(self):
         self.min_temp = 999.00
@@ -147,7 +149,11 @@ class GetLog(object):
         # q = os.path.getmtime(value_log_file)
         return os.path.getmtime(value_log_file)
 
-    def get_log(self, days, graph_type, span=9999):
+
+    def prefetch(self, days, span=9999):
+        global prefetch_data
+        prefetch_data = []
+
         now = int(time.time())
         start_ts = int(time.time()) - (days * seconds_in_day)
         end_ts = start_ts + (span * seconds_in_day)
@@ -160,13 +166,6 @@ class GetLog(object):
             log = "error"
 
         config = cfg.Config()
-        # Which log cols do we want ?
-        log_cols = []
-        sensors = []
-        for gi in config.graphed_items:
-            if graph_type is None or gi.graph == graph_type:
-                log_cols.append(gi.logcol)
-                sensors.append(gi.name)
 
         ret_lines = []
         prev = None
@@ -182,10 +181,60 @@ class GetLog(object):
                 if fields[0] == '2015':
                     n = map((lambda x: int(x)), fields[0:5])
                     ts = int(datetime.datetime(n[0], n[1]+1, n[2], n[3], n[4]).strftime('%s'))
-                    coloffset = 4
+                    coloffset = 5
                 else:
-                    coloffset = 0
+                    coloffset = 1
                     ts = int(fields[0])
+                if ts > end_ts:
+                    break
+
+                if start_ts <= ts <= end_ts:
+                    new_line = "{ts},{data}".format(ts=ts, data=','.join(fields[coloffset:]))
+                    prefetch_data.append(new_line)
+
+            index += 1
+        return len(prefetch_data)
+
+
+    def get_log(self, days, graph_type, span=9999):
+        now = int(time.time())
+        start_ts = int(time.time()) - (days * seconds_in_day)
+        end_ts = start_ts + (span * seconds_in_day)
+
+        # file_name = value_log_file
+        # try:
+        #     with open(file_name, 'r') as f:
+        #         log = f.read().split('\n')
+        # except IOError:
+        #     log = "error"
+
+        config = cfg.Config()
+        # Which log cols do we want ?
+        log_cols = []
+        sensors = []
+        for gi in config.graphed_items:
+            if graph_type is None or gi.graph == graph_type:
+                log_cols.append(gi.logcol)
+                sensors.append(gi.name)
+
+        ret_lines = []
+        prev = None
+        prev_ts = 0
+        index = 0
+        log_len = len(prefetch_data)
+        delta = None
+        while index < log_len:
+            current = []
+            line = prefetch_data[index].strip(',')
+            if len(line) > 5:
+                fields = line.split(',')
+                # if fields[0] == '2015':
+                #     n = map((lambda x: int(x)), fields[0:5])
+                #     ts = int(datetime.datetime(n[0], n[1]+1, n[2], n[3], n[4]).strftime('%s'))
+                #     coloffset = 4
+                # else:
+                coloffset = 0
+                ts = int(fields[0])
                 if ts > end_ts:
                     break
 
@@ -348,6 +397,12 @@ def get_temp_log(days, graph_type, span):
     #     sensor_names.append(name)
 
     return log, int(gtl.min_temp), int(gtl.max_temp+0.95), sensor_names
+
+
+def prefetch(days, span):
+    gtl = GetLog()
+    length = gtl.prefetch(days, span)
+    return length
 
 
 def convert_log(infile, outfile):
