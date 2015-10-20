@@ -16,6 +16,7 @@ class TempSensor(tank.Ticker):
         self._next_read_time = time.time()
         self._logger = logg.TankLog()
         self._action_interval = 60
+        self._last_log_temp = 0
         if debug.TEMP_TEST != 0:
             self._current_temp = self.test_temp()
 
@@ -57,8 +58,11 @@ class TempSensor(tank.Ticker):
         if now >= self._next_read_time:
             self._read_temp()
             self._next_read_time = self.time_next_action()
-            logging.info("{s} temp {t}".format(s=self.config.name, t=self._current_temp))
-            self._logger.log_value(self.config.name, "{temp:1.3f}".format(temp=self._current_temp))
+            diff = abs(self._current_temp - self._last_log_temp)
+            if diff > 0.126:
+                logging.info("{s} temp {t}".format(s=self.config.name, t=self._current_temp))
+                self._last_log_temp = self._current_temp
+                self._logger.log_value(self.config.name, "{temp:1.1f}".format(temp=self._current_temp))
 
     def _get_temp_raw(self):
         if debug.TEMP_TEST == 0:
