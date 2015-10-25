@@ -83,7 +83,7 @@ def graph(days, graphobj, span):
     google.load('visualization', '1.1', {packages: ['corechart', 'line']});
     google.setOnLoadCallback(drawChart);
     function d(n){
-        if (n>1000000){
+        if (n>1000000000){
             basetime = n;
             n=0;
             }

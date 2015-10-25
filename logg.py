@@ -15,6 +15,25 @@ current_value_file = '/mnt/ram/current_temps.txt'
 seconds_in_day = (3600 * 24)
 
 
+def log_file_name(ts=None):
+    if ts is None:
+        now = datetime.datetime.now()
+    else:
+        now = datetime.datetime.fromtimestamp(ts)
+    filename = "/var/log/tank/T{a}_{b}_{c}.txt".format(a=now.year, b=now.month, c=now.day)
+    return filename
+
+
+def find_next_log_file(ts):
+    now = time.time()
+    while ts < now:
+        fname = log_file_name(ts)
+        ts += (24 * 3600)
+        if os.path.isfile(fname):
+            return ts, fname
+    return -1 , ""
+
+
 def setup_log():
     default_log_dir = r'/var/log/tank/'
     default_logfile = default_log_dir+r'/temp.log'
@@ -87,8 +106,9 @@ class TankLog(tank.Ticker):
             logging.error("Error writing to temp file {f}".format(value_log_file))
 
     def tick(self):
+        log_file_name = log_file_name()
         try:
-            with open(current_value_file, 'w') as f:
+            with open(log_file_name, 'w') as f:
                 s = "ControlState={temp}\n".format(temp=cfg.Config().control_state)
                 f.write(s)
                 for key, value in self.current_values.iteritems():
@@ -96,7 +116,7 @@ class TankLog(tank.Ticker):
                     f.write(s)
         except IOError as e:
             logging.error(str(e))
-            logging.error("Error writing to temp file {f}".format(current_value_file))
+            logging.error("Error writing to temp file {f}".format(log_file_name))
 
         changed = False
         for key in self.current_log_values:
@@ -149,6 +169,42 @@ class GetLog(object):
         # q = os.path.getmtime(value_log_file)
         return os.path.getmtime(value_log_file)
 
+    def convert_1(self):
+        out_file_name = ""
+        in_file_name = value_log_file
+        fp_out = None
+        try:
+            with open(in_file_name, 'r') as f:
+                log = f.read().split('\n')
+        except IOError:
+            log = "error"
+
+        for line1 in log:
+            line = line1.strip(',')
+            if len(line) > 5:
+                fields = line.split(',')
+            if fields[0] == '2015':
+                n = map((lambda x: int(x)), fields[0:5])
+                ts = int(datetime.datetime(n[0], n[1]+1, n[2], n[3], n[4]).strftime('%s'))
+                coloffset = 5
+            else:
+                coloffset = 1
+                ts = int(fields[0])
+            new_line = "{ts},{data}\n".format(ts=ts, data=','.join(fields[coloffset:]))
+
+            new_out_file_name = log_file_name(ts)
+
+            if new_out_file_name != out_file_name:
+                out_file_name = new_out_file_name
+                if fp_out is not None:
+                    fp_out.close()
+                fp_out = open(out_file_name, 'w')
+            if fp_out is not None:
+                fp_out.write(new_line)
+
+        if fp_out is not None:
+            fp_out.close()
+
 
     def prefetch(self, days, span=9999):
         global prefetch_data
@@ -158,23 +214,27 @@ class GetLog(object):
         start_ts = int(time.time()) - (days * seconds_in_day)
         end_ts = start_ts + (span * seconds_in_day)
 
-        file_name = value_log_file
-        try:
-            with open(file_name, 'r') as f:
-                log = f.read().split('\n')
-        except IOError:
-            log = "error"
+        log = []
+        ts2 = start_ts
+        while ts2>0 and ts2 <= end_ts:
+            ts2, file_name = find_next_log_file(ts2)
+            try:
+                with open(file_name, 'r') as f:
+                    log2 = f.read().split('\n')
+                    log.extend(log2)
+            except IOError:
+                log2 = "error"
 
-        config = cfg.Config()
-
-        ret_lines = []
-        prev = None
-        prev_ts = 0
+        # config = cfg.Config()
+        #
+        # ret_lines = []
+        # prev = None
+        # prev_ts = 0
         index = 0
         log_len = len(log)
-        delta = None
+        # delta = None
         while index < log_len:
-            current = []
+            # current = []
             line = log[index].strip(',')
             if len(line) > 5:
                 fields = line.split(',')
@@ -418,3 +478,10 @@ def convert_log(infile, outfile):
             a = ','.join(fields[1:4])
             newline = "2015,{a},0,{b},{c},\n".format(a=a, b=fields[5], c=fields[6][:-1])
             f.write(newline)
+
+
+def main():
+    return GetLog().convert_1()
+
+if __name__ == '__main__':
+    main()
