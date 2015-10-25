@@ -58,9 +58,8 @@ class LogStuff(object):
                 mx = 1
         new_log = []
         for e in logdata:
-            fields = e.split(',')
-            if len(fields) > 1:
-                new_log.append("[d({a}),{b}]".format(a=fields[0], b=','.join(fields[1:])))
+            if len(e.fields) > 1:
+                new_log.append("[d({a}),{b}]".format(a=e.ts, b=','.join(e.fields[1:])))
         return ','.join(new_log), mn, mx, sensor_names
 
 
@@ -237,7 +236,7 @@ def view(ctrl=False):
         print e
         print traceback.format_exc()
     end_time = time.time()
-    logging.info(str(end_time - start_time))
+    logging.info("VIEW - "+str(end_time - start_time))
     return line
 
 

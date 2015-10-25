@@ -3,6 +3,7 @@
 import os
 import time
 import datetime
+import copy
 
 import logging
 import cfg
@@ -13,6 +14,30 @@ value_log_file = '/var/log/tank/temps.txt'
 current_value_file = '/mnt/ram/current_temps.txt'
 
 seconds_in_day = (3600 * 24)
+
+
+class LogLine(object):
+    def __init__(self, line):
+        self.OK = False
+        try:
+            if type(line) is int:
+                self.fields = ['TS']
+                self.ts = line
+            else:
+                self.fields = line.strip(',').split(',')
+                self.ts = int(self.fields[0])
+            self.OK = True
+        except:
+            self.OK = False
+
+    def differ(self, a):
+        if a is None:
+            return True
+
+        for i in range(1, len(a.fields)):
+            if a.fields[i] != self.fields[i]:
+                return True
+        return False
 
 
 def log_file_name(ts=None):
@@ -98,17 +123,17 @@ class TankLog(tank.Ticker):
         output2 = "{date:s},{temps:s}\n". \
             format(date=now, temps=','.join(temps_output))
 
+        log_fname = log_file_name()
         try:
-            with open(value_log_file, 'a') as f:
+            with open(log_fname, 'a') as f:
                 f.write(output2)
         except IOError as e:
             logging.error(str(e))
-            logging.error("Error writing to temp file {f}".format(value_log_file))
+            logging.error("Error writing to temp file {f}".format(log_fname))
 
     def tick(self):
-        log_file_name = log_file_name()
         try:
-            with open(log_file_name, 'w') as f:
+            with open(current_value_file, 'w') as f:
                 s = "ControlState={temp}\n".format(temp=cfg.Config().control_state)
                 f.write(s)
                 for key, value in self.current_values.iteritems():
@@ -116,7 +141,7 @@ class TankLog(tank.Ticker):
                     f.write(s)
         except IOError as e:
             logging.error(str(e))
-            logging.error("Error writing to temp file {f}".format(log_file_name))
+            logging.error("Error writing to temp file {f}".format(current_value_file))
 
         changed = False
         for key in self.current_log_values:
@@ -169,7 +194,8 @@ class GetLog(object):
         # q = os.path.getmtime(value_log_file)
         return os.path.getmtime(value_log_file)
 
-    def convert_1(self):
+    @classmethod
+    def convert_1(cls):
         out_file_name = ""
         in_file_name = value_log_file
         fp_out = None
@@ -235,23 +261,13 @@ class GetLog(object):
         # delta = None
         while index < log_len:
             # current = []
-            line = log[index].strip(',')
-            if len(line) > 5:
-                fields = line.split(',')
-                if fields[0] == '2015':
-                    n = map((lambda x: int(x)), fields[0:5])
-                    ts = int(datetime.datetime(n[0], n[1]+1, n[2], n[3], n[4]).strftime('%s'))
-                    coloffset = 5
-                else:
-                    coloffset = 1
-                    ts = int(fields[0])
-                if ts > end_ts:
+            line = LogLine(log[index])
+            if line.OK:
+                if line.ts > end_ts:
                     break
 
-                if start_ts <= ts <= end_ts:
-                    new_line = "{ts},{data}".format(ts=ts, data=','.join(fields[coloffset:]))
-                    prefetch_data.append(new_line)
-
+                if start_ts <= line.ts <= end_ts:
+                    prefetch_data.append(line)
             index += 1
         return len(prefetch_data)
 
@@ -284,50 +300,42 @@ class GetLog(object):
         log_len = len(prefetch_data)
         delta = None
         while index < log_len:
-            current = []
-            line = prefetch_data[index].strip(',')
-            if len(line) > 5:
-                fields = line.split(',')
-                # if fields[0] == '2015':
-                #     n = map((lambda x: int(x)), fields[0:5])
-                #     ts = int(datetime.datetime(n[0], n[1]+1, n[2], n[3], n[4]).strftime('%s'))
-                #     coloffset = 4
-                # else:
-                coloffset = 0
-                ts = int(fields[0])
-                if ts > end_ts:
+            current = None
+            line = prefetch_data[index]
+            if line.OK:
+
+                if line.ts > end_ts:
                     break
 
-                if start_ts <= ts <= end_ts:
+                if start_ts <= line.ts <= end_ts:
+                    current = LogLine(line.ts)
                     for lc in log_cols:
-                        if len(fields) > lc+coloffset:
-                            value = fields[lc+coloffset]
+                        if len(line.fields) > lc:
+                            current.fields.append(line.fields[lc])
+                            self.update_min_max_values(float(line.fields[lc]))
                         else:
-                            value = "0"
-                        self.update_min_max_values(float(value))
-                        current.append(value)
+                            current.fields.append("0")
+                        #current.append(value)
 
-                    if current != prev:
+                    if current.differ(prev):
                         if prev is not None:
-                            if (delta is not None) and (ts > (prev_ts + 301)):
-                                retline = [str(ts-delta)]
-                                retline.extend(prev)
-                                ret_lines.append(','.join(retline))
-
+                            if line.ts > (prev.ts + 301):
+                                p = copy.copy(prev)
+                                p.ts = line.ts-1-delta
+                                ret_lines.append(p)
+                    #
                         if delta is None:
-                            retline = [str(ts+1)]
-                            delta = ts+1
+                            delta = line.ts + 1
                         else:
-                            retline = [str(ts-delta+1)]
-                        retline.extend(current)
-                        ret_lines.append(','.join(retline))
+                            current.ts -= delta+1
+
+                        ret_lines.append(current)
                         prev = current
-                        prev_ts = ts
 
             index += 1
-        if prev is not None:
-            retline = str(now)+','
-            ret_lines.append(retline+','.join(prev))
+        # if prev is not None:
+        #     retline = str(now)+','
+        #     ret_lines.append(retline+','.join(prev))
 
         return ret_lines, sensors
 
@@ -447,6 +455,9 @@ def log_last_changed():
 
 
 def get_temp_log(days, graph_type, span):
+    start_time = time.time()
+
+    s = time.time()
     gtl = GetLog()
 
     log, sensor_names = gtl.get_log(days, graph_type, span)
@@ -456,12 +467,17 @@ def get_temp_log(days, graph_type, span):
     # for name, __ in temps.iteritems():
     #     sensor_names.append(name)
 
+    end_time = time.time()
+    logging.info("get_temp_log - "+str(len(log))+" "+str(graph_type)+"  "+str(end_time - start_time))
     return log, int(gtl.min_temp), int(gtl.max_temp+0.95), sensor_names
 
 
 def prefetch(days, span):
+    start_time = time.time()
     gtl = GetLog()
     length = gtl.prefetch(days, span)
+    end_time = time.time()
+    logging.info("prefetch - "+str(end_time - start_time))
     return length
 
 
