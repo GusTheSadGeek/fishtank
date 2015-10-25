@@ -52,6 +52,7 @@ class LogStuff(object):
     @staticmethod
     def get_temp_log(days, graph_type, span):
         logdata, mn, mx, sensor_names = logg.get_temp_log(days, graph_type, span)
+        start_time = time.time()
         if mn == mx:
             if mn < 2:
                 mn = 0
@@ -60,7 +61,12 @@ class LogStuff(object):
         for e in logdata:
             if len(e.fields) > 1:
                 new_log.append("[d({a}),{b}]".format(a=e.ts, b=','.join(e.fields[1:])))
-        return ','.join(new_log), mn, mx, sensor_names
+        a = time.time()
+        ret = ','.join(new_log), mn, mx, sensor_names
+        b = time.time()
+        logging.info("get_temp_log2 - "+str(graph_type)+"  "+str(a - start_time)+"  "+str(b - start_time))
+        return ret
+
 
 
 def gettimestamp():
