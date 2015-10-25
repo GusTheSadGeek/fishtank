@@ -296,16 +296,8 @@ class GetLog(object):
 
         ret_lines = []
         prev = None
-        prev_ts = 0
-        index = 0
-        log_len = len(prefetch_data)
         delta = None
         for line in prefetch_data:
-#        while index < log_len:
-            current = None
-#            line = prefetch_data[index]
-#            if line.OK:
-
             if line.ts > end_ts:
                 break
 
@@ -314,10 +306,8 @@ class GetLog(object):
                 for lc in log_cols:
                     if len(line.fields) > lc:
                         current.fields.append(line.fields[lc])
-                        #self.update_min_max_values(float(line.fields[lc]))
                     else:
                         current.fields.append("0")
-                    #current.append(value)
 
                 if current.differ(prev):
                     for a in current.fields[1:]:
@@ -328,7 +318,7 @@ class GetLog(object):
                             p = copy.copy(prev)
                             p.ts = line.ts-1-delta
                             ret_lines.append(p)
-                #
+
                     if delta is None:
                         delta = line.ts
                     else:
@@ -337,10 +327,10 @@ class GetLog(object):
                     ret_lines.append(current)
                     prev = current
 
-        index += 1
-        # if prev is not None:
-        #     retline = str(now)+','
-        #     ret_lines.append(retline+','.join(prev))
+        if prev is not None:
+            p = copy.copy(prev)
+            p.ts = now-delta
+            ret_lines.append(p)
 
         return ret_lines, sensors
 
