@@ -54,7 +54,7 @@ class TempSensor(tank.Ticker):
 
     # Override base
     def tick(self):
-        if 'OFF' in self.config.control_state and self.config.always_active == 0:
+        if 'OFF' in self.config.control_state and self.config.always_active == 0 and self._current_temp != 0:
             pass
         else:
             now = time.time()
