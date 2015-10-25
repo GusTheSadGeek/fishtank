@@ -46,7 +46,7 @@ class Relay(tank.Ticker):
 
     def tick(self):
         if self.controller is not None:
-            if 'OFF' in self.config.control_state and self.config.always_active is None:
+            if 'OFF' in self.config.control_state and self.config.always_active == 0:
                 new_state = -1
             else:
                 new_state = self.controller.get_new_relay_state(self.config.onvalue, self.config.offvalue)

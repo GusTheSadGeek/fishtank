@@ -183,7 +183,7 @@ class ConfigSection(object):
 
     @property
     def always_active(self):
-        return self.tryget(ITEM_ALWAYSACTIVE)
+        return self.trygetint(ITEM_ALWAYSACTIVE, 0)
 
     @property
     def control_state(self):

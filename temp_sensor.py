@@ -54,15 +54,18 @@ class TempSensor(tank.Ticker):
 
     # Override base
     def tick(self):
-        now = time.time()
-        if now >= self._next_read_time:
-            self._read_temp()
-            self._next_read_time = self.time_next_action()
-            diff = abs(self._current_temp - self._last_log_temp)
-            if diff > 0.126:
-                logging.info("{s} temp {t}".format(s=self.config.name, t=self._current_temp))
-                self._last_log_temp = self._current_temp
-                self._logger.log_value(self.config.name, "{temp:1.1f}".format(temp=self._current_temp))
+        if 'OFF' in self.config.control_state and self.config.always_active == 0:
+            pass
+        else:
+            now = time.time()
+            if now >= self._next_read_time:
+                self._read_temp()
+                self._next_read_time = self.time_next_action()
+                diff = abs(self._current_temp - self._last_log_temp)
+                if diff > 0.126:
+                    logging.info("{s} temp {t}".format(s=self.config.name, t=self._current_temp))
+                    self._last_log_temp = self._current_temp
+                    self._logger.log_value(self.config.name, "{temp:1.1f}".format(temp=self._current_temp))
 
     def _get_temp_raw(self):
         if debug.TEMP_TEST == 0:
