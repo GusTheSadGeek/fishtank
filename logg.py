@@ -259,16 +259,17 @@ class GetLog(object):
         index = 0
         log_len = len(log)
         # delta = None
-        while index < log_len:
-            # current = []
-            line = LogLine(log[index])
+        prev = LogLine(log[0])
+        for l in log:
+            line = LogLine(l)
             if line.OK:
-                if line.ts > end_ts:
-                    break
+                if prev.differ(line):
+                    if line.ts > end_ts:
+                        break
+                    if start_ts <= line.ts <= end_ts:
+                        prefetch_data.append(line)
+                    prev = line
 
-                if start_ts <= line.ts <= end_ts:
-                    prefetch_data.append(line)
-            index += 1
         return len(prefetch_data)
 
 
@@ -299,40 +300,44 @@ class GetLog(object):
         index = 0
         log_len = len(prefetch_data)
         delta = None
-        while index < log_len:
+        for line in prefetch_data:
+#        while index < log_len:
             current = None
-            line = prefetch_data[index]
-            if line.OK:
+#            line = prefetch_data[index]
+#            if line.OK:
 
-                if line.ts > end_ts:
-                    break
+            if line.ts > end_ts:
+                break
 
-                if start_ts <= line.ts <= end_ts:
-                    current = LogLine(line.ts)
-                    for lc in log_cols:
-                        if len(line.fields) > lc:
-                            current.fields.append(line.fields[lc])
-                            self.update_min_max_values(float(line.fields[lc]))
-                        else:
-                            current.fields.append("0")
-                        #current.append(value)
+            if start_ts <= line.ts:
+                current = LogLine(line.ts)
+                for lc in log_cols:
+                    if len(line.fields) > lc:
+                        current.fields.append(line.fields[lc])
+                        #self.update_min_max_values(float(line.fields[lc]))
+                    else:
+                        current.fields.append("0")
+                    #current.append(value)
 
-                    if current.differ(prev):
-                        if prev is not None:
-                            if line.ts > (prev.ts + 301):
-                                p = copy.copy(prev)
-                                p.ts = line.ts-1-delta
-                                ret_lines.append(p)
-                    #
-                        if delta is None:
-                            delta = line.ts + 1
-                        else:
-                            current.ts -= delta+1
+                if current.differ(prev):
+                    for a in current.fields[1:]:
+                        self.update_min_max_values(float(a))
 
-                        ret_lines.append(current)
-                        prev = current
+                    if prev is not None:
+                        if line.ts > (prev.ts + 301):
+                            p = copy.copy(prev)
+                            p.ts = line.ts-1-delta
+                            ret_lines.append(p)
+                #
+                    if delta is None:
+                        delta = line.ts
+                    else:
+                        current.ts -= delta
 
-            index += 1
+                    ret_lines.append(current)
+                    prev = current
+
+        index += 1
         # if prev is not None:
         #     retline = str(now)+','
         #     ret_lines.append(retline+','.join(prev))
