@@ -69,7 +69,7 @@ class TempSensor(tank.Ticker):
                     self._logger.log_value(self.config.name, "{temp:1.1f}".format(temp=self._current_temp))
                 if (self._current_temp > self.config.alert_max) or (self._current_temp < self.config.alert_min):
                     now = time.time()
-                    if (now + 900) < self._last_alert:
+                    if now > (self._last_alert + 900):
                         logging.critical("TEMP OUT OF RANGE {t}".format(t=self._current_temp))
                         send_alert.temp_err(self.config.alert_min, self.config.alert_max, self._current_temp)
                         self._last_alert = now
