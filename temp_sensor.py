@@ -6,7 +6,7 @@ import time
 import tank
 import logging
 import logg
-
+import send_alert
 
 class TempSensor(tank.Ticker):
     def __init__(self, config):
@@ -17,6 +17,7 @@ class TempSensor(tank.Ticker):
         self._logger = logg.TankLog()
         self._action_interval = 60
         self._last_log_temp = 0
+        self._last_alert = time.time()
         if debug.TEMP_TEST != 0:
             self._current_temp = self.test_temp()
 
@@ -25,7 +26,7 @@ class TempSensor(tank.Ticker):
         Provides Test Values
         """
         if self.config.name.startswith('tank'):
-            return 21.5
+            return 20.5
         else:
             return 24.5
 
@@ -66,6 +67,12 @@ class TempSensor(tank.Ticker):
                     logging.info("{s} temp {t}".format(s=self.config.name, t=self._current_temp))
                     self._last_log_temp = self._current_temp
                     self._logger.log_value(self.config.name, "{temp:1.1f}".format(temp=self._current_temp))
+                if (self._current_temp > self.config.alert_max) or (self._current_temp < self.config.alert_min):
+                    now = time.time()
+                    if (now + 900) < self._last_alert:
+                        logging.critical("TEMP OUT OF RANGE {t}".format(t=self._current_temp))
+                        send_alert.temp_err(self.config.alert_min, self.config.alert_max, self._current_temp)
+                        self._last_alert = now
 
     def _get_temp_raw(self):
         if debug.TEMP_TEST == 0:

@@ -47,6 +47,11 @@ ITEM_ALWAYSACTIVE = 'alwaysactive'
 ITEM_OBJECT = 'object'
 ITEM_ZERO = 'zero'
 
+ITEM_INSTAPUSH_ID = 'instapushid'
+ITEM_INSTAPUSH_SECRET = 'instapushsecret'
+ITEM_ALERT_MIN = 'alertmin'
+ITEM_ALERT_MAX = 'alertmax'
+
 
 class ConfigSection(object):
     def __init__(self, section, config):
@@ -186,6 +191,16 @@ class ConfigSection(object):
         return self.trygetint(ITEM_ALWAYSACTIVE, 0)
 
     @property
+    def alert_min(self):
+        return self.trygetfloat(ITEM_ALERT_MIN, -999.0)
+
+    @property
+    def alert_max(self):
+        return self.trygetfloat(ITEM_ALERT_MAX, 999.0)
+
+###################
+
+    @property
     def control_state(self):
         return self.config.get('general', ITEM_CONTROLSTATE)
 
@@ -248,6 +263,14 @@ class Config(object):
     @property
     def log_interval(self):
         return self.trygetint('general', ITEM_LOGINTERVAL, 900)  # 15 min default
+
+    @property
+    def instapush_app_id(self):
+        return self.config.get('general', ITEM_INSTAPUSH_ID)
+
+    @property
+    def instapush_secret(self):
+        return self.config.get('general', ITEM_INSTAPUSH_SECRET)
 
     @property
     def control_state(self):
