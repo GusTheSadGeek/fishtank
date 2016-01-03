@@ -63,10 +63,10 @@ class TempSensor(tank.Ticker):
                 self._read_temp()
                 self._next_read_time = self.time_next_action()
                 diff = abs(self._current_temp - self._last_log_temp)
-                if diff > 0.126:
+                if diff > 0.05:
                     logging.info("{s} temp {t}".format(s=self.config.name, t=self._current_temp))
                     self._last_log_temp = self._current_temp
-                    self._logger.log_value(self.config.name, "{temp:1.1f}".format(temp=self._current_temp))
+                    self._logger.log_value(self.config.name, "{temp:1.2f}".format(temp=self._current_temp))
                 if (self._current_temp > self.config.alert_max) or (self._current_temp < self.config.alert_min):
                     now = time.time()
                     if now > (self._last_alert + 900):
