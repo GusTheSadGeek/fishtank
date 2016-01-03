@@ -81,7 +81,7 @@ class Measurement(object):
             self.sonar_signal_off = None
             self.sonar_signal_on = None
 
-            if self.myevent.wait(4):  # Wait MAX of 4 seconds for returned pulse
+            if self.myevent.wait(2):  # Wait MAX of 2 seconds for returned pulse
                 if self.sonar_signal_on is not None and self.sonar_signal_off is not None:
                     time_passed = self.sonar_signal_on - self.sonar_signal_off
                     distance_cm = time_passed * ((speed_of_sound * 100) / 2)

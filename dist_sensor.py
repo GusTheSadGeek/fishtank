@@ -14,7 +14,7 @@ class DistSensor(tank.Ticker):
     def __init__(self, config):
         super(DistSensor, self).__init__()
         self.config = config
-        self._current_dist = 0
+        self._current_dist = 100.0
         self._logger = logg.TankLog()
         self._action_interval = 300
         self._next_read_time = 0  # self.time_next_action()
@@ -55,15 +55,17 @@ class DistSensor(tank.Ticker):
 
     # Override base
     def tick(self):
-        if 'OFF' in self.config.control_state and self.config.always_active == 0 and self._current_dist != 0:
-            pass
-        else:
-            now = time.time()
-            if now >= self._next_read_time:
-                self._get_distance()
-                self._next_read_time = self.time_next_action()
-                logging.info("{s} dist {t}".format(s=self.config.name, t=self._current_dist))
-                self._logger.log_value(self.config.name, "{dist}".format(dist=int(self._current_dist)))
+#        self._logger.log_value(self.config.name, "{dist}".format(dist=int(self._current_dist)))
+#        return
+#        if 'OFF' in self.config.control_state and self.config.always_active == 0 and self._current_dist != 0:
+#            pass
+#        else:
+         now = time.time()
+         if now >= self._next_read_time:
+             self._get_distance()
+             self._next_read_time = self.time_next_action()
+             logging.info("{s} dist {t}".format(s=self.config.name, t=self._current_dist))
+             self._logger.log_value(self.config.name, "{dist}".format(dist=int(self._current_dist)))
 
     def _get_distance(self):
         if debug.DIST_TEST != 0:
