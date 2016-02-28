@@ -246,6 +246,36 @@ def view(ctrl=False):
     return line
 
 
+def view_temp(field=2):
+    start_time = time.time()
+    line = ''
+    try:
+        current_temp = logg.get_current_temp(field)
+        line = '<br><br><font size="7">'+str(current_temp)+' C</font><br><br>'
+    except Exception as e:
+        print e
+        print traceback.format_exc()
+    end_time = time.time()
+    logging.info("VIEWTEMP - "+str(end_time - start_time))
+    return line
+
+
+def view_temps():
+    start_time = time.time()
+    line = ''
+    try:
+        current_temp = logg.get_current_temp(1)
+        line = '<br>Water<br><font size="7">'+str(current_temp)+' C</font><br><br>'
+        current_temp = logg.get_current_temp(2)
+        line += '<br>Air<br><font size="7">'+str(current_temp)+' C</font><br><br>'
+    except Exception as e:
+        print e
+        print traceback.format_exc()
+    end_time = time.time()
+    logging.info("VIEWTEMP - "+str(end_time - start_time))
+    return line
+
+
 @app.route("/")
 def rootview():
     global current_path
@@ -267,6 +297,24 @@ def rootview():
     # line += main_page()
     # return line
 
+
+@app.route("/airtemp")
+def airtemp():
+    global current_path
+    current_path = '/airtemp'
+    return view_temp(2)
+
+@app.route("/watertemp")
+def watertemp():
+    global current_path
+    current_path = '/watertemp'
+    return view_temp(1)
+
+@app.route("/temps")
+def temps():
+    global current_path
+    current_path = '/temps'
+    return view_temps()
 
 @app.route("/otocinclus")
 def control():
