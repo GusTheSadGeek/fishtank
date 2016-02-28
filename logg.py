@@ -314,10 +314,11 @@ class GetLog(object):
                         self.update_min_max_values(float(a))
 
                     if prev is not None:
-                        if line.ts > (prev.ts + 301):
-                            p = copy.copy(prev)
-                            p.ts = line.ts-1-delta
-                            ret_lines.append(p)
+                        if graph_type != 'temps':
+                            if line.ts > (prev.ts + 301):
+                                p = copy.copy(prev)
+                                p.ts = line.ts-1-delta
+                                ret_lines.append(p)
 
                     if delta is None:
                         delta = line.ts

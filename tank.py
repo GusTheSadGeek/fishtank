@@ -38,7 +38,6 @@ status_file = "/mnt/ram/relay_status.txt"
 
 loglevel = logging.WARNING
 
-
 def setup_log():
     default_log_dir = r'/var/log/tank/'
     default_logfile = default_log_dir+r'/tank.log'
@@ -205,3 +204,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
