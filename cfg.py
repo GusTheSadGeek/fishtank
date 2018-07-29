@@ -211,7 +211,7 @@ class Config(object):
     """
     __shared_state = {}
 
-    def __init__(self, file_name='tank.cfg'):
+    def __init__(self, file_name='/home/pi/git/fishtank/tank.cfg'):
         self.__dict__ = self.__shared_state
         if '_first_time' not in self.__dict__:
             self._first_time = False

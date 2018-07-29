@@ -116,8 +116,8 @@ class TankLog(tank.Ticker):
         for col in self.current_log_values:
             temps_output.append("{key}:{val}".format(key=col, val=self.current_log_values[col]))
 
-        output2 = "time:{date:s}\t{temps:s}\n". \
-            format(date=datetime.datetime.now().isoformat(), temps="\t".join(temps_output))
+        output2 = "time:{date:s}000Z\t{temps:s}\n". \
+            format(date=datetime.datetime.utcnow().isoformat(), temps="\t".join(temps_output))
 
         log_fname = log_file_name()
         try:
