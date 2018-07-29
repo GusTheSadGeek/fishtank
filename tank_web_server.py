@@ -16,6 +16,8 @@ import time
 import logging
 import os
 
+os.system("cd /home/pi/git/fishtank")
+
 app = Flask(__name__)
 
 prog = None

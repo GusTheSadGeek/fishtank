@@ -74,7 +74,8 @@ class Timer(tank.Ticker):
         super(Timer, self).__init__()
         self.config = config
         self._current_state = False
-        filename = (self.config.name+'.sched').replace(' ', '_')
+#        filename = (self.config.name+'.sched').replace(' ', '_')
+        filename = ("/home/pi/git/fishtank/"+self.config.name+'.sched').replace(' ', '_')
         self.schedule = Schedule(filename)
 
     def init(self):
