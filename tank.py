@@ -135,6 +135,7 @@ def check_comms():
 
 
 def main():
+    os.system("mount -t tmpfs -o size=10m tmpfs /mnt/ram")
     setup_log()
     watchdog.start_watchdog()
     error_count = 0
