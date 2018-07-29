@@ -37,7 +37,11 @@ class Measurement(object):
         # print self.trig_pin
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD)
-        GPIO.remove_event_detect(self.echo_pin)
+        try:
+            GPIO.remove_event_detect(self.echo_pin)
+        except:
+            # Fails if event detect was never set - this is OK
+            pass
         GPIO.setup(self.trig_pin, GPIO.OUT)
         GPIO.setup(self.echo_pin, GPIO.IN)
         GPIO.add_event_detect(self.echo_pin, GPIO.BOTH)
@@ -72,9 +76,9 @@ class Measurement(object):
         for distance_reading in range(11):
 
             GPIO.output(self.trig_pin, GPIO.LOW)
-            time.sleep(1.0)
+            time.sleep(0.1)
             GPIO.output(self.trig_pin, GPIO.HIGH)
-            time.sleep(0.001)
+            time.sleep(0.1)
             GPIO.output(self.trig_pin, GPIO.LOW)
 
             self.myevent.clear()
@@ -85,16 +89,19 @@ class Measurement(object):
                 if self.sonar_signal_on is not None and self.sonar_signal_off is not None:
                     time_passed = self.sonar_signal_on - self.sonar_signal_off
                     distance_cm = time_passed * ((speed_of_sound * 100) / 2)
+                    #print distance_cm
                     sample.append(distance_cm)
             else:
                 logging.warning("Distance sensor took too long")
+                sample.append(200)
+#                return 200
         sorted_sample = sorted(sample)
-        # print sorted_sample
+        #print sorted_sample
         total = 0.0
         for d in sorted_sample[1:-1]:
             total += d
         mean = total/(len(sorted_sample)-2)
-        logging.debug("median = {med}   mean = {mean}".format(med=sorted_sample[5], mean=mean))
+        logging.warning("median = {med}   mean = {mean}".format(med=sorted_sample[5], mean=mean))
         return sorted_sample[5]
 
     def sig_callback(self, pin):

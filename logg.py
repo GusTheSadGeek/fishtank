@@ -110,22 +110,20 @@ class TankLog(tank.Ticker):
 
     def update_log_file(self):
         logging.info("logging")
-        now = str(int(time.time()))
+#        now = str(int(time.time()))
 #        now = time_now_text()
         temps_output = []
-        for col in range(10):
-            if col in self.cols:
-                temps_output.append("{val}".format(val=self.current_log_values[self.cols[col]]))
+        for col in self.current_log_values:
+            temps_output.append("{key}:{val}".format(key=col, val=self.current_log_values[col]))
 
-        # date = "{a},{b},{c},{d},{e}". \
-        #     format(a=now.year, b=now.month-1, c=now.day, d=now.hour, e=now.minute)
-
-        output2 = "{date:s},{temps:s}\n". \
-            format(date=now, temps=','.join(temps_output))
+        output2 = "time:{date:s}\t{temps:s}\n". \
+            format(date=datetime.datetime.now().isoformat(), temps="\t".join(temps_output))
 
         log_fname = log_file_name()
         try:
             with open(log_fname, 'a') as f:
+                f.write(output2)
+            with open('/var/log/tank/tank_log.txt', 'a') as f:
                 f.write(output2)
         except IOError as e:
             logging.error(str(e))

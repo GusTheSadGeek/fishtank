@@ -148,7 +148,7 @@ def graph(days, graphobj, span):
     return '\n'.join(a) + b + c1
 
 
-def main_page(ctrl=False, day_count=7, span=9999):
+def main_page(ctrl=False, day_count=1, span=2):
     line = '<a href="{cp}?d=9999&s=9999"> All </a><br>'.format(cp=current_path)
     line += '<a href="{cp}?d=30&s={s}"> Month </a><br>'.format(cp=current_path, s=span)
     line += '<a href="{cp}?d=7&s={s}"> Week </a><br>'.format(cp=current_path, s=span)
@@ -159,9 +159,9 @@ def main_page(ctrl=False, day_count=7, span=9999):
     line += '<a href="{cp}?d={d}&s=2"> 2 Days </a><br>'.format(cp=current_path, d=day_count)
     line += '<a href="{cp}?d={d}&s=3"> 3 Days </a><br>'.format(cp=current_path, d=day_count)
 
-    for chart in config.graphs_types:
-        name = "linechart_{chart}".format(chart=chart)
-        line += '<br><div id="{name}" style=" width:1000px;"></div>'.format(name=name)
+#    for chart in config.graphs_types:
+#        name = "linechart_{chart}".format(chart=chart)
+#        line += '<br><div id="{name}" style=" width:1000px;"></div>'.format(name=name)
     line += gettimestamp() + "<br><br>"
 
     current = logg.get_current_values_formatted()
@@ -224,19 +224,19 @@ def view(ctrl=False):
             span = int(request.args.get('s'))
         except (ValueError, TypeError):
             span = 99999
-
-        charts = []
-        logg.prefetch(day_count, span)
-        for g in config.graph_items:
-            q = graph(day_count, g, span)
-            charts.append(q)
+	
+#        charts = []
+#        logg.prefetch(day_count, span)
+#        for g in config.graph_items:
+#            q = graph(day_count, g, span)
+#            charts.append(q)
 
             #
             # for gt cfg.graphs_items:
             #     if gt[tank_cfg.ITEM_GRAPH] == gt:
-
-        line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url={cp}" />\n</head>\n<body>{graph}\n'.\
-            format(cp=current_path, graph=' '.join(charts))
+#       line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url={cp}" />\n</head>\n<body>{graph}\n'.\
+        line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url={cp}" />\n</head>\n<body>\n'.\
+            format(cp=current_path)
         line += main_page(ctrl, day_count, span)
     except Exception as e:
         print e
@@ -246,7 +246,7 @@ def view(ctrl=False):
     return line
 
 
-def view_temp(field=2):
+def view_temp(field='airtemp'):
     start_time = time.time()
     line = ''
     try:
@@ -264,15 +264,34 @@ def view_temps():
     start_time = time.time()
     line = ''
     try:
-        current_temp = logg.get_current_temp(1)
+        current_temp = logg.get_current_temp('tanktemp')
         line = '<br>Water<br><font size="7">'+str(current_temp)+' C</font><br><br>'
-        current_temp = logg.get_current_temp(2)
+        current_temp = logg.get_current_temp('airtemp')
         line += '<br>Air<br><font size="7">'+str(current_temp)+' C</font><br><br>'
     except Exception as e:
         print e
         print traceback.format_exc()
     end_time = time.time()
     logging.info("VIEWTEMP - "+str(end_time - start_time))
+    return line
+
+
+def view_text():
+    start_time = time.time()
+    line = ''
+
+    try:
+        current = logg.get_current_values_formatted()
+        if 'ControlState:ACTIVE' in current:
+            current_control_state = 'ACTIVE'
+        else:
+            current_control_state = 'OFF'
+        line += current + "<br><br>"
+    except Exception as e:
+        print e
+        print traceback.format_exc()
+    end_time = time.time()
+    logging.info("VIEWTEXT - "+str(end_time - start_time))
     return line
 
 
@@ -298,17 +317,26 @@ def rootview():
     # return line
 
 
+@app.route("/text")
+def text():
+    global current_path
+    current_path = '/text'
+    return view_text()
+
+
 @app.route("/airtemp")
 def airtemp():
     global current_path
     current_path = '/airtemp'
-    return view_temp(2)
+    return view_temp('airtemp')
+
 
 @app.route("/watertemp")
 def watertemp():
     global current_path
     current_path = '/watertemp'
-    return view_temp(1)
+    return view_temp('tanktemp')
+
 
 @app.route("/temps")
 def temps():
@@ -316,11 +344,15 @@ def temps():
     current_path = '/temps'
     return view_temps()
 
+
 @app.route("/otocinclus")
 def control():
     global current_path
+#    print "a"
     current_path = '/otocinclus'
-    return view(True)
+    r = view(True)
+#    print "b"
+    return r
     # line = '<html>\n<head>\n<meta http-equiv="refresh" content="30; url=/otocinclus" />\n' \
     #        + graph() + '</head>\n<body>\n'
     # line += main_page(True)
@@ -431,6 +463,33 @@ def toggle_relay():
 #     tank_relayController.toggle_relay(3)
 #     return '<html>\n<head>\n<meta http-equiv="refresh" content="0; url=/otocinclus" />\n</head>\n<body></<body>\n'
 #
+
+#@app.rotue("/iphone")
+#def temp():
+#    return '<html>\n<head>\n<a href="/iphone.ovpn">iphone.ovpn</a>\n<body></<body>\n'#
+
+#@app.rotue("/iphone.txt")
+#def temp():
+#    send_file('/tmp/iphone.ovpn', mimetype='text/plain')
+#    return view()
+
+@app.route("/iphoneh")
+def temph0():
+    return '<html>\n<head>\n<a href="/iphoneh.ovpn">iphoneh.ovpn</a>\n<body></<body>\n'#
+
+@app.route("/iphoneh.ovpn")
+def temph1():
+    return send_file('/www/HannahIphone2.ovpn', mimetype='text/plain')
+
+@app.route("/iphonee")
+def tempe0():
+    return '<html>\n<head>\n<a href="/iphonee.ovpn">iphonee.ovpn</a>\n<body></<body>\n'#
+
+@app.route("/iphonee.ovpn")
+def tempe1():
+    send_file('/www/EdwardIphone.ovpn', mimetype='text/plain')
+    return view()
+
 
 @app.route("/temp")
 def temp():

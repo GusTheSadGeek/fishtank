@@ -8,7 +8,7 @@ import time
 import tank
 import logging
 import logg
-
+import cfg
 
 class DistSensor(tank.Ticker):
     def __init__(self, config):
@@ -16,7 +16,7 @@ class DistSensor(tank.Ticker):
         self.config = config
         self._current_dist = 100.0
         self._logger = logg.TankLog()
-        self._action_interval = 300
+        self._action_interval = 20
         self._next_read_time = 0  # self.time_next_action()
         if debug.TEMP_TEST != 0:
             self._current_dist = self.test_dist()
@@ -87,3 +87,23 @@ class DistSensor(tank.Ticker):
                 # otherwise give a distance to water surface
                 self._current_dist = raw_distance
             # logging.info("{x}".format(x=self._current_dist))
+
+
+def main():
+  config = cfg.Config()
+
+
+  dist_cfg = config.get_items(cfg.DIST_TYPE)[0]
+  ds = DistSensor(dist_cfg)
+
+  while True:
+    ds._get_distance()
+    print ds.current_value
+    time.sleep(1)
+
+
+
+
+if __name__ == '__main__':
+    main()
+
