@@ -3,7 +3,6 @@ main.conf
 temp_sensors.conf
 .idea
 *.pyc
-*.sched
 mydebug.py
 temps.txt
 *.iml
